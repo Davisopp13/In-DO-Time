@@ -108,7 +108,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Pause/resume functionality (stop current entry, start new one on resume)
 - [x] Support multiple simultaneous running timers (one per project)
 - [x] Timer state persists in Supabase (survives browser close/refresh)
-- [ ] On app load, detect any is_running=true entries and resume display
+- [x] On app load, detect any is_running=true entries and resume display
 
 ### Phase 3: Dashboard UI (Days 3-4)
 - [ ] Card-based dashboard showing all active projects with timer controls

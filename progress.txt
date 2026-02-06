@@ -246,3 +246,29 @@
   - Browser close/refresh survives because state is in database, not memory
   - This was essentially a verification task - the design was correct from the start
 ---
+
+## Iteration 13 - On app load, detect any is_running=true entries and resume display
+- What was implemented:
+  - Created src/hooks/useRunningTimers.ts - React hook that detects running timers on mount
+  - Hook calls getAllRunningTimersWithProjects() on mount and ticks elapsed seconds every 1s
+  - Returns timers with live elapsedSeconds, loading/error states, refresh callback
+  - Created src/components/ActiveTimers.tsx - displays running timers with live ticking UI
+  - Each timer card shows: client name, project name, elapsed time (HH:MM:SS), running cost
+  - Green pulsing indicator for running state, Pause and Stop buttons
+  - Cards styled with client color border, amber accent for timer display
+  - Updated src/app/page.tsx to include ActiveTimers component at top of dashboard
+  - Component renders nothing when no timers are running (clean empty state)
+- Files changed:
+  - src/hooks/useRunningTimers.ts (new)
+  - src/components/ActiveTimers.tsx (new)
+  - src/app/page.tsx (updated)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - useRunningTimers hook uses useRef for interval to avoid stale closure issues
+  - Interval only runs when timers.length > 0, cleaned up when timers empty
+  - calculateElapsedSeconds recomputes from start_time each tick (avoids drift)
+  - ActiveTimers returns null when no running timers (doesn't render empty container)
+  - Pattern: 'use client' directive needed in hook file for useState/useEffect
+  - Hooks directory created at src/hooks/ for custom React hooks
+  - Next.js allows mixing server (page.tsx) and client (ActiveTimers) components seamlessly
+---
