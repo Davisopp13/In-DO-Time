@@ -535,3 +535,19 @@
   - Export button conditionally rendered based on reportEntries.length > 0
   - Hours (Decimal) column useful for invoicing (e.g., 1.50 = 1h 30m)
 ---
+
+## Iteration 26 - Include DO Code Lab logo in report header
+- What was implemented:
+  - Added DO Code Lab logo (48x48px) to the Reports page header, next to the "Reports" title
+  - Used Next.js Image component for optimized image loading
+  - Logo and title wrapped in flex container with gap-3 for clean alignment
+  - Logo uses flex-shrink-0 to prevent shrinking on small screens
+- Files changed:
+  - src/app/reports/page.tsx (added Image import, added logo to header)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Logo is at public/DO_CODE_LAB_LOGO_NO_TEXT.png (placed in iteration 1)
+  - Next.js Image component requires explicit width/height props
+  - PRD specifies larger logo for report exports vs nav (32-40px nav, larger for reports)
+  - 48px works well as a report header size - prominent but not overwhelming
+---

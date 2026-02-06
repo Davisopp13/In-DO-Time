@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
 import { generateCSV, downloadCSV, generateCSVFilename } from '@/lib/csv'
@@ -247,12 +248,21 @@ export default function ReportsPage() {
   return (
     <div>
       <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text">Reports</h1>
-          <p className="text-sm text-text-muted">
-            Summary by client and project
-            {hasFilters ? ' (filtered)' : ''}
-          </p>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/DO_CODE_LAB_LOGO_NO_TEXT.png"
+            alt="DO Code Lab"
+            width={48}
+            height={48}
+            className="flex-shrink-0"
+          />
+          <div>
+            <h1 className="text-2xl font-bold text-text">Reports</h1>
+            <p className="text-sm text-text-muted">
+              Summary by client and project
+              {hasFilters ? ' (filtered)' : ''}
+            </p>
+          </div>
         </div>
         {reportEntries.length > 0 && (
           <button
