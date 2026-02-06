@@ -663,3 +663,26 @@
   - Seed data rates/colors can be adjusted - these are reasonable defaults based on PRD UI mockup
   - Two approaches: SQL migration for DB-level seed, JS function for app-level seed
 ---
+
+## Iteration 31 - Deploy to Vercel
+- What was implemented:
+  - Installed Vercel CLI globally (npm install -g vercel)
+  - Already logged in as davisopp13 — no auth setup needed
+  - Deployed with `vercel --yes --name in-do-time` (directory name had spaces, needed explicit name)
+  - Build succeeded on Vercel (Turbo Build Machine, 30 cores)
+  - Production URL: https://in-do-time.vercel.app
+  - Aliased automatically to production
+  - .vercel directory created for project linking
+  - Note: Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) need to be added via Vercel dashboard or `vercel env add`
+- Files changed:
+  - .vercel/ (created by Vercel CLI for project linking)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Vercel CLI --name flag is deprecated but still works to override directory name
+  - Directory names with spaces cause Vercel project name errors — use explicit name
+  - `vercel --yes` accepts all defaults (framework detection, build command, output dir)
+  - Vercel auto-detects Next.js and configures build correctly
+  - Environment variables must be added separately via `vercel env add` or Vercel dashboard
+  - Production URL pattern: https://{project-name}.vercel.app
+  - Already logged in users can deploy immediately without `vercel login`
+---

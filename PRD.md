@@ -136,7 +136,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Empty states with DO Code Lab logo watermark
 - [x] Loading states and error handling
 - [x] Seed B.B. (GA Gymnastics State Meets) and Mariah (Evermore Equine) as default clients
-- [ ] Deploy to Vercel
+- [x] Deploy to Vercel
 - [ ] Test full loop: add client → start timer → stop → view log → export CSV
 
 ## Explicitly NOT Building
