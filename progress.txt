@@ -319,3 +319,25 @@
   - stopPropagation on button container prevents card-level click from firing on button clicks
   - canQuickStart flag prevents accidental double-starts when a timer is already running
 ---
+
+## Iteration 16 - "Recent Activity" section below cards showing today's logged entries
+- What was implemented:
+  - Added RecentEntry interface for typed recent activity data
+  - In loadData, fetches today's completed time entries (is_running=false, start_time >= midnight today)
+  - Joins time_entries → projects → clients for full context
+  - "Recent Activity" section renders below project cards grid
+  - Each entry shows: client color dot, project name, notes, client name, time range, duration (HH:MM:SS), cost
+  - Entry count summary: "Today: N entries"
+  - Styled with rounded card container, dividers between entries, truncation for long text
+  - Section only renders when there are entries (clean empty state)
+  - Recent entries refresh after every timer start/stop/pause/resume action
+- Files changed:
+  - src/components/Dashboard.tsx (added RecentEntry interface, fetch logic, JSX section)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Supabase .gte() filter works with ISO date strings for date range queries
+  - todayStart.setHours(0,0,0,0) gives local midnight - consistent with user expectations
+  - Nested Supabase select for time_entries → projects → clients: `projects!inner(name, ..., clients!inner(...))`
+  - toLocaleTimeString with {hour: 'numeric', minute: '2-digit'} gives clean time display
+  - Recent Activity auto-refreshes via loadData() being called after every timer action
+---

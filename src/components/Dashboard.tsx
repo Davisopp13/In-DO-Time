@@ -34,10 +34,23 @@ interface TimerDisplayInfo {
   elapsedSeconds: number
 }
 
+interface RecentEntry {
+  id: string
+  start_time: string
+  end_time: string
+  duration_seconds: number
+  notes: string | null
+  project_name: string
+  client_name: string
+  client_color: string
+  effectiveRate: number
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithClient[]>([])
   const [runningTimers, setRunningTimers] = useState<Map<string, TimerDisplayInfo>>(new Map())
   const [pausedProjects, setPausedProjects] = useState<Set<string>>(new Set())
+  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -93,6 +106,40 @@ export default function Dashboard() {
         })
       await Promise.all(pauseChecks)
       setPausedProjects(pausedSet)
+
+      // Fetch today's completed entries for Recent Activity
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { data: todayEntries, error: entriesError } = await supabase
+        .from('time_entries')
+        .select(`
+          id, start_time, end_time, duration_seconds, notes,
+          projects!inner(
+            name,
+            hourly_rate_override,
+            clients!inner(name, hourly_rate, color)
+          )
+        `)
+        .eq('is_running', false)
+        .gte('start_time', todayStart.toISOString())
+        .order('start_time', { ascending: false })
+
+      if (!entriesError && todayEntries) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped: RecentEntry[] = todayEntries.map((e: any) => ({
+          id: e.id,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          duration_seconds: e.duration_seconds ?? 0,
+          notes: e.notes,
+          project_name: e.projects.name,
+          client_name: e.projects.clients.name,
+          client_color: e.projects.clients.color,
+          effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
+        }))
+        setRecentEntries(mapped)
+      }
 
       setError(null)
     } catch (err) {
@@ -337,6 +384,52 @@ export default function Dashboard() {
           )
         })}
       </div>
+
+      {/* Recent Activity */}
+      {recentEntries.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-text">Recent Activity</h2>
+            <span className="text-sm text-text-muted">
+              Today: {recentEntries.length} {recentEntries.length === 1 ? 'entry' : 'entries'}
+            </span>
+          </div>
+          <div className="divide-y divide-border overflow-hidden rounded-card border border-border bg-background shadow-card">
+            {recentEntries.map((entry) => {
+              const cost = calculateRunningCost(entry.duration_seconds, entry.effectiveRate)
+              const startDate = new Date(entry.start_time)
+              const endDate = new Date(entry.end_time)
+              const timeRange = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+
+              return (
+                <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                  <span
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                    style={{ backgroundColor: entry.client_color }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text">
+                      {entry.project_name}
+                      {entry.notes && (
+                        <span className="ml-1 font-normal text-text-muted">— {entry.notes}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      {entry.client_name} · {timeRange}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="font-mono text-sm font-medium text-text">
+                      {formatDuration(entry.duration_seconds)}
+                    </p>
+                    <p className="text-xs text-text-muted">{formatCurrency(cost)}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
