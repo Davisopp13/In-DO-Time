@@ -230,3 +230,19 @@
   - eslint @typescript-eslint/no-explicit-any needed for complex Supabase return types
   - RunningTimerWithProject provides dashboard-ready structure with effectiveRate pre-calculated
 ---
+
+## Iteration 12 - Timer state persists in Supabase (survives browser close/refresh)
+- What was implemented:
+  - Verified existing timer engine already persists all state to Supabase
+  - startTimer() creates time_entry rows with is_running=true in Supabase
+  - stopTimer() updates rows with end_time, duration_seconds, is_running=false
+  - getRunningTimers() and getAllRunningTimersWithProjects() fetch from Supabase
+  - No code changes needed - persistence was inherent to the Supabase-based design
+- Files changed:
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Timer persistence was already built into the architecture from iteration 8
+  - All timer functions use getSupabase() and perform CRUD on time_entries table
+  - Browser close/refresh survives because state is in database, not memory
+  - This was essentially a verification task - the design was correct from the start
+---
