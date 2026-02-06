@@ -38,6 +38,8 @@ export default function ClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -97,46 +99,51 @@ export default function ClientsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSaving(true);
 
-    const hourlyRate = parseFloat(formRate) || 0;
+    try {
+      const hourlyRate = parseFloat(formRate) || 0;
 
-    if (editingClient) {
-      // Update existing client
-      const updates: ClientUpdate = {
-        name: formName,
-        hourly_rate: hourlyRate,
-        color: formColor,
-      };
+      if (editingClient) {
+        // Update existing client
+        const updates: ClientUpdate = {
+          name: formName,
+          hourly_rate: hourlyRate,
+          color: formColor,
+        };
 
-      const { error } = await supabase
-        .from('clients')
-        .update(updates)
-        .eq('id', editingClient.id);
+        const { error } = await supabase
+          .from('clients')
+          .update(updates)
+          .eq('id', editingClient.id);
 
-      if (error) {
-        setError('Failed to update client');
-        console.error('Error updating client:', error);
-        return;
+        if (error) {
+          setError('Failed to update client');
+          console.error('Error updating client:', error);
+          return;
+        }
+      } else {
+        // Create new client
+        const newClient: ClientInsert = {
+          name: formName,
+          hourly_rate: hourlyRate,
+          color: formColor,
+        };
+
+        const { error } = await supabase.from('clients').insert(newClient);
+
+        if (error) {
+          setError('Failed to create client');
+          console.error('Error creating client:', error);
+          return;
+        }
       }
-    } else {
-      // Create new client
-      const newClient: ClientInsert = {
-        name: formName,
-        hourly_rate: hourlyRate,
-        color: formColor,
-      };
 
-      const { error } = await supabase.from('clients').insert(newClient);
-
-      if (error) {
-        setError('Failed to create client');
-        console.error('Error creating client:', error);
-        return;
-      }
+      closeForm();
+      refreshClients();
+    } finally {
+      setSaving(false);
     }
-
-    closeForm();
-    refreshClients();
   }
 
   async function handleArchive(client: Client) {
@@ -147,18 +154,23 @@ export default function ClientsPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from('clients')
-      .update({ status: newStatus })
-      .eq('id', client.id);
+    setArchivingId(client.id);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ status: newStatus })
+        .eq('id', client.id);
 
-    if (error) {
-      setError(`Failed to ${action} client`);
-      console.error(`Error ${action}ing client:`, error);
-      return;
+      if (error) {
+        setError(`Failed to ${action} client`);
+        console.error(`Error ${action}ing client:`, error);
+        return;
+      }
+
+      refreshClients();
+    } finally {
+      setArchivingId(null);
     }
-
-    refreshClients();
   }
 
   return (
@@ -197,7 +209,23 @@ export default function ClientsPage() {
 
       {/* Client List */}
       {loading ? (
-        <div className="text-center py-12 text-text-muted">Loading clients...</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-card bg-background p-4 shadow-card border-l-4 border-gray-200 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="h-4 w-28 rounded bg-gray-200" />
+                  <div className="h-3 w-16 rounded bg-gray-200" />
+                </div>
+                <div className="h-4 w-4 rounded-full bg-gray-200" />
+              </div>
+              <div className="mt-4 flex gap-2">
+                <div className="h-7 w-12 rounded bg-gray-200" />
+                <div className="h-7 w-16 rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : clients.length === 0 ? (
         <EmptyState title={showArchived ? 'No clients found' : 'No active clients'}>
           {showArchived ? 'Try disabling the archived filter.' : 'Add your first client to get started!'}
@@ -238,13 +266,16 @@ export default function ClientsPage() {
                 </button>
                 <button
                   onClick={() => handleArchive(client)}
-                  className={`rounded-button px-3 py-1.5 text-xs font-medium transition-colors ${
+                  disabled={archivingId === client.id}
+                  className={`rounded-button px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     client.status === 'active'
                       ? 'text-text-muted hover:bg-gray-100'
                       : 'text-primary hover:bg-primary-light'
                   }`}
                 >
-                  {client.status === 'active' ? 'Archive' : 'Restore'}
+                  {archivingId === client.id
+                    ? 'Processing...'
+                    : client.status === 'active' ? 'Archive' : 'Restore'}
                 </button>
               </div>
             </div>
@@ -322,9 +353,10 @@ export default function ClientsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                  disabled={saving}
+                  className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingClient ? 'Save Changes' : 'Add Client'}
+                  {saving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Client'}
                 </button>
               </div>
             </form>

@@ -606,3 +606,38 @@
   - EmptyState accepts ReactNode children so it can contain links, buttons, or plain text
   - All 5 pages had slightly different empty state patterns - component normalizes them
 ---
+
+## Iteration 29 - Loading states and error handling
+- What was implemented:
+  - Replaced plain "Loading..." text with skeleton loaders on 4 pages/components:
+    - Clients page: 3-card skeleton grid with placeholder shapes
+    - Projects page: 3-card skeleton grid matching card layout
+    - Dashboard: 6-card skeleton grid matching timer card structure
+    - Reports page: full-page skeleton with header, filters, totals, and client card placeholders
+  - Added form submit button loading states:
+    - Clients page: "Saving..." with disabled state during create/update
+    - Projects page: "Saving..." with disabled state during create/update
+  - Added archive/restore button loading states:
+    - Clients page: "Processing..." with disabled state per client (archivingId tracking)
+    - Projects page: "Processing..." with disabled state per project (archivingId tracking)
+  - Added Dashboard timer button text feedback:
+    - "Starting...", "Pausing...", "Stopping...", "Resuming..." text + disabled:cursor-not-allowed
+  - Created Next.js root-level loading.tsx with spinner animation
+  - Created Next.js root-level error.tsx boundary with error message and "Try again" button
+- Files changed:
+  - src/app/clients/page.tsx (skeleton loader, saving state, archivingId state)
+  - src/app/projects/page.tsx (skeleton loader, saving state, archivingId state)
+  - src/components/Dashboard.tsx (skeleton loader, button text feedback)
+  - src/app/reports/page.tsx (skeleton loader)
+  - src/app/loading.tsx (new - root loading boundary)
+  - src/app/error.tsx (new - root error boundary)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Skeleton loaders should match the shape of the actual content (cards, text lines, etc.)
+  - animate-pulse on a parent container applies to all children
+  - Button loading pattern: track saving state, wrap async in try/finally, disable + change text
+  - archivingId pattern better than boolean for tracking which item is processing in a list
+  - Next.js error.tsx must be 'use client' and receives error + reset props
+  - Next.js loading.tsx is automatically shown during route transitions (App Router feature)
+  - Time Log page already had excellent loading/error handling from iteration 18 - used as reference
+---

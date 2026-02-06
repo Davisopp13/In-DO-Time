@@ -226,8 +226,17 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="rounded-card border border-border bg-background p-6 shadow-card">
-        <div className="animate-pulse text-text-muted">Loading dashboard...</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="rounded-card border-2 border-gray-200 bg-background p-5 shadow-card animate-pulse">
+            <div className="mb-3 space-y-2">
+              <div className="h-3 w-20 rounded bg-gray-200" />
+              <div className="h-5 w-32 rounded bg-gray-200" />
+            </div>
+            <div className="mb-3 h-3 w-16 rounded bg-gray-200" />
+            <div className="h-10 rounded bg-gray-200" />
+          </div>
+        ))}
       </div>
     )
   }
@@ -392,33 +401,33 @@ export default function Dashboard() {
                     <button
                       onClick={() => handlePause(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
+                      className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Pause
+                      {isDisabled ? 'Pausing...' : 'Pause'}
                     </button>
                     <button
                       onClick={() => handleStop(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-red-500 px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                      className="flex-1 rounded-button bg-red-500 px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Stop
+                      {isDisabled ? 'Stopping...' : 'Stop'}
                     </button>
                   </>
                 ) : pausedProjects.has(project.id) ? (
                   <button
                     onClick={() => handleResume(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
+                    className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    ▶ Resume
+                    {isDisabled ? 'Resuming...' : '▶ Resume'}
                   </button>
                 ) : (
                   <button
                     onClick={() => handleStart(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-primary px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                    className="flex-1 rounded-button bg-primary px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Start Timer
+                    {isDisabled ? 'Starting...' : 'Start Timer'}
                   </button>
                 )}
               </div>

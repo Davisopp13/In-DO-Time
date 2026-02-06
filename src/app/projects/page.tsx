@@ -40,6 +40,8 @@ export default function ProjectsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -123,45 +125,50 @@ export default function ProjectsPage() {
       return;
     }
 
-    const rateOverride = useRateOverride ? parseFloat(formRateOverride) || null : null;
+    setSaving(true);
+    try {
+      const rateOverride = useRateOverride ? parseFloat(formRateOverride) || null : null;
 
-    if (editingProject) {
-      // Update existing project
-      const updates: ProjectUpdate = {
-        name: formName,
-        client_id: formClientId,
-        hourly_rate_override: rateOverride,
-      };
+      if (editingProject) {
+        // Update existing project
+        const updates: ProjectUpdate = {
+          name: formName,
+          client_id: formClientId,
+          hourly_rate_override: rateOverride,
+        };
 
-      const { error } = await supabase
-        .from('projects')
-        .update(updates)
-        .eq('id', editingProject.id);
+        const { error } = await supabase
+          .from('projects')
+          .update(updates)
+          .eq('id', editingProject.id);
 
-      if (error) {
-        setError('Failed to update project');
-        console.error('Error updating project:', error);
-        return;
+        if (error) {
+          setError('Failed to update project');
+          console.error('Error updating project:', error);
+          return;
+        }
+      } else {
+        // Create new project
+        const newProject: ProjectInsert = {
+          name: formName,
+          client_id: formClientId,
+          hourly_rate_override: rateOverride,
+        };
+
+        const { error } = await supabase.from('projects').insert(newProject);
+
+        if (error) {
+          setError('Failed to create project');
+          console.error('Error creating project:', error);
+          return;
+        }
       }
-    } else {
-      // Create new project
-      const newProject: ProjectInsert = {
-        name: formName,
-        client_id: formClientId,
-        hourly_rate_override: rateOverride,
-      };
 
-      const { error } = await supabase.from('projects').insert(newProject);
-
-      if (error) {
-        setError('Failed to create project');
-        console.error('Error creating project:', error);
-        return;
-      }
+      closeForm();
+      refreshProjects();
+    } finally {
+      setSaving(false);
     }
-
-    closeForm();
-    refreshProjects();
   }
 
   async function handleArchive(project: ProjectWithClient) {
@@ -172,18 +179,23 @@ export default function ProjectsPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from('projects')
-      .update({ status: newStatus })
-      .eq('id', project.id);
+    setArchivingId(project.id);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', project.id);
 
-    if (error) {
-      setError(`Failed to ${action} project`);
-      console.error(`Error ${action}ing project:`, error);
-      return;
+      if (error) {
+        setError(`Failed to ${action} project`);
+        console.error(`Error ${action}ing project:`, error);
+        return;
+      }
+
+      refreshProjects();
+    } finally {
+      setArchivingId(null);
     }
-
-    refreshProjects();
   }
 
   // Get effective hourly rate for a project
@@ -247,7 +259,24 @@ export default function ProjectsPage() {
 
       {/* Project List */}
       {loading ? (
-        <div className="text-center py-12 text-text-muted">Loading projects...</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-card bg-background p-4 shadow-card border-l-4 border-gray-200 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="h-4 w-32 rounded bg-gray-200" />
+                  <div className="h-3 w-20 rounded bg-gray-200" />
+                  <div className="h-3 w-16 rounded bg-gray-200" />
+                </div>
+                <div className="h-4 w-4 rounded-full bg-gray-200" />
+              </div>
+              <div className="mt-4 flex gap-2">
+                <div className="h-7 w-12 rounded bg-gray-200" />
+                <div className="h-7 w-16 rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : projects.length === 0 ? (
         <EmptyState title={showArchived ? 'No projects found' : 'No active projects'}>
           {showArchived ? 'Try disabling the archived filter.' : 'Add your first project to get started!'}
@@ -292,13 +321,16 @@ export default function ProjectsPage() {
                 </button>
                 <button
                   onClick={() => handleArchive(project)}
-                  className={`rounded-button px-3 py-1.5 text-xs font-medium transition-colors ${
+                  disabled={archivingId === project.id}
+                  className={`rounded-button px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     project.status === 'active'
                       ? 'text-text-muted hover:bg-gray-100'
                       : 'text-primary hover:bg-primary-light'
                   }`}
                 >
-                  {project.status === 'active' ? 'Archive' : 'Restore'}
+                  {archivingId === project.id
+                    ? 'Processing...'
+                    : project.status === 'active' ? 'Archive' : 'Restore'}
                 </button>
               </div>
             </div>
@@ -394,9 +426,10 @@ export default function ProjectsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                  disabled={saving}
+                  className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingProject ? 'Save Changes' : 'Add Project'}
+                  {saving ? 'Saving...' : editingProject ? 'Save Changes' : 'Add Project'}
                 </button>
               </div>
             </form>

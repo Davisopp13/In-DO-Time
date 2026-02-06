@@ -226,8 +226,47 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="rounded-card border border-border bg-background p-6 shadow-card">
-        <div className="animate-pulse text-text-muted">Loading report...</div>
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-12 w-12 rounded bg-gray-200" />
+          <div className="space-y-2">
+            <div className="h-6 w-24 rounded bg-gray-200" />
+            <div className="h-3 w-40 rounded bg-gray-200" />
+          </div>
+        </div>
+        <div className="rounded-card border border-border bg-background p-4 shadow-card">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="h-10 rounded bg-gray-200 col-span-2 sm:col-span-1" />
+            <div className="h-10 rounded bg-gray-200" />
+            <div className="h-10 rounded bg-gray-200" />
+          </div>
+        </div>
+        <div className="rounded-card border border-primary bg-primary-light p-4 shadow-card">
+          <div className="flex justify-between">
+            <div className="h-4 w-20 rounded bg-gray-200" />
+            <div className="flex gap-6">
+              <div className="h-6 w-20 rounded bg-gray-200" />
+              <div className="h-6 w-20 rounded bg-gray-200" />
+            </div>
+          </div>
+        </div>
+        {[1, 2].map((i) => (
+          <div key={i} className="rounded-card border border-border bg-background p-5 shadow-card">
+            <div className="flex justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-4 rounded-full bg-gray-200" />
+                <div className="space-y-1">
+                  <div className="h-4 w-28 rounded bg-gray-200" />
+                  <div className="h-3 w-20 rounded bg-gray-200" />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="h-4 w-16 rounded bg-gray-200" />
+                <div className="h-4 w-16 rounded bg-gray-200" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
