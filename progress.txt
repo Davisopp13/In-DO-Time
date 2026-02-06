@@ -359,3 +359,27 @@
   - Summary updates live because runningTimers state updates every second via setInterval
   - Used &apos; for apostrophe in JSX to satisfy ESLint react/no-unescaped-entities
 ---
+
+## Iteration 18 - Time log page: chronological list of all time entries
+- What was implemented:
+  - Created /time-log page with full chronological listing of all time entries
+  - Entries fetched from Supabase with nested project + client data
+  - Grouped by date with date headers showing daily totals (hours + earnings)
+  - Each entry displays: client color dot, project name, client name, start/end time, duration, cost
+  - Running timers shown with green pulsing "Running" badge and "—" for duration/cost
+  - Manual entries marked with "Manual" badge
+  - Notes displayed inline when present
+  - Empty state with link back to Dashboard
+  - Loading and error states with retry button
+  - Entry count shown in page subtitle
+- Files changed:
+  - src/app/time-log/page.tsx (new - full time log page)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Reused same Supabase nested select pattern: time_entries → projects!inner → clients!inner
+  - Grouped entries by date using reduce with toLocaleDateString as key
+  - Follows same UI patterns as Dashboard: rounded-card, divide-y, shadow-card
+  - Running entries show "Running" instead of end time/duration/cost
+  - Daily totals calculated per group for quick at-a-glance summary
+  - Header already had /time-log nav link from iteration 7
+---
