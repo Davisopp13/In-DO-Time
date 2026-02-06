@@ -124,7 +124,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Time log page: chronological list of all time entries
 - [x] Filter by client, project, and date range
 - [x] Each entry: project, client, start/end time, duration, calculated cost
-- [ ] Edit entries (adjust start/end times for corrections)
+- [x] Edit entries (adjust start/end times for corrections)
 - [ ] Delete entries with confirmation dialog
 - [ ] Manual time entry option (add time after the fact)
 - [ ] Reports page: summary view grouped by client → project

@@ -423,3 +423,25 @@
   - The time-log/page.tsx already had all required fields from the initial implementation
   - Build and typecheck both pass cleanly
 ---
+
+## Iteration 21 - Edit entries (adjust start/end times for corrections)
+- What was implemented:
+  - Added updateTimeEntry() function to src/lib/timer.ts for editing time entries
+  - Auto-recalculates duration_seconds when start_time or end_time changes
+  - Added edit modal to Time Log page with datetime-local inputs for start/end times
+  - Edit modal also allows editing notes
+  - Pencil icon edit button on each completed entry row (not shown for running entries)
+  - Validation: end time must be after start time
+  - Loading state on save button, error display in modal
+  - Entry list refreshes after successful edit
+- Files changed:
+  - src/lib/timer.ts (added updateTimeEntry function, imported TimeEntryUpdate type)
+  - src/app/time-log/page.tsx (added edit state, modal, edit button, save handler)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - datetime-local input needs YYYY-MM-DDTHH:MM format, not ISO string
+  - toDatetimeLocal helper converts ISO to local datetime format using local timezone
+  - Edit button hidden for running entries (they should be stopped first)
+  - updateTimeEntry smartly recalculates duration when either time changes
+  - Modal uses fixed inset-0 z-50 with black/50 backdrop for overlay pattern
+---

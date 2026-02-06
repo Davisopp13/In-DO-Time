@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
-import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
+import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry } from '@/lib/timer'
 
 interface TimeLogEntry {
   id: string
@@ -38,6 +38,14 @@ export default function TimeLogPage() {
   const [selectedProject, setSelectedProject] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  // Edit state
+  const [editingEntry, setEditingEntry] = useState<TimeLogEntry | null>(null)
+  const [editStartTime, setEditStartTime] = useState('')
+  const [editEndTime, setEditEndTime] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   // Load clients and projects for filter dropdowns
   useEffect(() => {
@@ -138,6 +146,57 @@ export default function TimeLogPage() {
     setSelectedProject('')
     setStartDate('')
     setEndDate('')
+  }
+
+  // Convert ISO string to datetime-local input value (YYYY-MM-DDTHH:MM)
+  const toDatetimeLocal = (isoString: string) => {
+    const d = new Date(isoString)
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const openEditModal = (entry: TimeLogEntry) => {
+    setEditingEntry(entry)
+    setEditStartTime(toDatetimeLocal(entry.start_time))
+    setEditEndTime(entry.end_time ? toDatetimeLocal(entry.end_time) : '')
+    setEditNotes(entry.notes || '')
+    setEditError(null)
+  }
+
+  const closeEditModal = () => {
+    setEditingEntry(null)
+    setEditError(null)
+  }
+
+  const handleEditSave = async () => {
+    if (!editingEntry) return
+
+    const startDt = new Date(editStartTime)
+    const endDt = editEndTime ? new Date(editEndTime) : null
+
+    if (endDt && endDt <= startDt) {
+      setEditError('End time must be after start time')
+      return
+    }
+
+    setEditSaving(true)
+    setEditError(null)
+
+    const result = await updateTimeEntry(editingEntry.id, {
+      start_time: startDt.toISOString(),
+      end_time: endDt ? endDt.toISOString() : undefined,
+      notes: editNotes || null,
+    })
+
+    setEditSaving(false)
+
+    if (!result.success) {
+      setEditError(result.error || 'Failed to save')
+      return
+    }
+
+    closeEditModal()
+    loadEntries()
   }
 
   const hasFilters = selectedClient || selectedProject || startDate || endDate
@@ -364,6 +423,19 @@ export default function TimeLogPage() {
                           </p>
                         </div>
 
+                        {/* Edit button */}
+                        {!entry.is_running && (
+                          <button
+                            onClick={() => openEditModal(entry)}
+                            className="flex-shrink-0 rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
+                            title="Edit entry"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
+                        )}
+
                         {/* Duration + Cost */}
                         <div className="flex-shrink-0 text-right">
                           <p className="font-mono text-sm font-medium text-text">
@@ -380,6 +452,75 @@ export default function TimeLogPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-card border border-border bg-background p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold text-text">Edit Time Entry</h2>
+            <p className="mb-4 text-sm text-text-muted">
+              {editingEntry.project_name} — {editingEntry.client_name}
+            </p>
+
+            {editError && (
+              <div className="mb-4 rounded-button bg-red-50 p-3 text-sm text-red-600">
+                {editError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {editingEntry.end_time && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-text">End Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">Notes</label>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Optional notes"
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={closeEditModal}
+                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving}
+                className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+              >
+                {editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

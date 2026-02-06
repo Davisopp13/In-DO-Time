@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase'
-import type { TimeEntry, TimeEntryInsert } from '@/types/database'
+import type { TimeEntry, TimeEntryInsert, TimeEntryUpdate } from '@/types/database'
 
 /**
  * Timer Engine - Core functions for managing time entries
@@ -425,6 +425,59 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
       effectiveRate,
     }
   })
+}
+
+/**
+ * Update a time entry (for editing start/end times, notes)
+ * Recalculates duration_seconds if start_time or end_time changes
+ */
+export async function updateTimeEntry(
+  timeEntryId: string,
+  updates: TimeEntryUpdate
+): Promise<TimerResult> {
+  const supabase = getSupabase()
+
+  // If both start and end times are present, recalculate duration
+  if (updates.start_time && updates.end_time) {
+    const start = new Date(updates.start_time)
+    const end = new Date(updates.end_time)
+    updates.duration_seconds = Math.floor((end.getTime() - start.getTime()) / 1000)
+  } else if (updates.start_time || updates.end_time) {
+    // Need to fetch existing entry to calculate with the other time
+    const { data: existing, error: fetchError } = await supabase
+      .from('time_entries')
+      .select('start_time, end_time')
+      .eq('id', timeEntryId)
+      .single()
+
+    if (fetchError || !existing) {
+      return { success: false, error: fetchError?.message || 'Entry not found' }
+    }
+
+    const start = new Date(updates.start_time || existing.start_time)
+    const end = updates.end_time
+      ? new Date(updates.end_time)
+      : existing.end_time
+        ? new Date(existing.end_time)
+        : null
+
+    if (end) {
+      updates.duration_seconds = Math.floor((end.getTime() - start.getTime()) / 1000)
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .update(updates)
+    .eq('id', timeEntryId)
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, timeEntry: data }
 }
 
 /**
