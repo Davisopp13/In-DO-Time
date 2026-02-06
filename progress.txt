@@ -486,3 +486,28 @@
   - Same modal overlay pattern: fixed inset-0 z-50 bg-black/50
   - datetime-local inputs work well for manual entry (user picks exact date+time)
 ---
+
+## Iteration 24 - Reports page: summary view grouped by client → project
+- What was implemented:
+  - Created /reports page with summary view grouped by client → project
+  - Fetches all completed time entries (is_running=false) with nested project + client data
+  - Groups entries into ClientSummary → ProjectSummary hierarchy with totals
+  - Grand totals bar showing total time, total earned, entry count, client count
+  - Each client card: color dot, name, entry/project count, total time, total earned
+  - Collapsible client sections with chevron toggle (expanded by default)
+  - Project breakdown within each client: name, entry count, time, cost
+  - Sorted by total cost descending (highest-earning clients/projects first)
+  - Filter bar: Client dropdown, From date, To date with Clear button
+  - Filters applied at Supabase query level for efficiency
+  - Loading, error, and empty states matching existing patterns
+- Files changed:
+  - src/app/reports/page.tsx (new - full reports page)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Reused same Supabase nested select pattern: time_entries → projects!inner → clients!inner
+  - Map-based grouping (Map<clientId, ClientSummary>) is clean for multi-level aggregation
+  - Collapsible sections use simple Record<string, boolean> state for toggle tracking
+  - Reports only show completed entries (is_running=false) - running timers excluded
+  - Grand totals computed from clientSummaries array with reduce
+  - Header already had /reports nav link from iteration 5
+---
