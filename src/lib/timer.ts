@@ -176,6 +176,119 @@ export async function stopTimerForProject(projectId: string): Promise<TimerResul
 }
 
 /**
+ * Pause timer for a project
+ * Stops the current running entry - on resume, a new entry will be created
+ * This is essentially the same as stopTimerForProject, but semantically indicates
+ * the intent to resume later (vs. completing work for the day)
+ */
+export async function pauseTimer(projectId: string): Promise<TimerResult> {
+  return stopTimerForProject(projectId)
+}
+
+/**
+ * Resume timer for a project
+ * Starts a new time entry, optionally copying notes from the last entry
+ */
+export async function resumeTimer(projectId: string, copyNotes: boolean = true): Promise<TimerResult> {
+  // Check if there's already a running timer for this project
+  const existingTimer = await getRunningTimerForProject(projectId)
+  if (existingTimer) {
+    return {
+      success: false,
+      error: 'Timer is already running for this project',
+    }
+  }
+
+  // Optionally get the last entry's notes to continue where we left off
+  let notes: string | undefined
+  if (copyNotes) {
+    const lastEntry = await getLastEntryForProject(projectId)
+    if (lastEntry?.notes) {
+      notes = lastEntry.notes
+    }
+  }
+
+  return startTimer(projectId, notes)
+}
+
+/**
+ * Get the most recent time entry for a project (running or stopped)
+ * Useful for resuming with the same notes
+ */
+export async function getLastEntryForProject(projectId: string): Promise<TimeEntry | null> {
+  const supabase = getSupabase()
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('start_time', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (error) {
+    // PGRST116 means no rows found
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching last entry for project:', error)
+    }
+    return null
+  }
+
+  return data
+}
+
+/**
+ * Check if a project has a paused timer (has recent entries but none running)
+ * Returns the last stopped entry if paused, null otherwise
+ */
+export async function getPausedTimerForProject(projectId: string): Promise<TimeEntry | null> {
+  // First check if there's a running timer - if so, it's not paused
+  const runningTimer = await getRunningTimerForProject(projectId)
+  if (runningTimer) {
+    return null
+  }
+
+  // Get the last entry - if it exists and was stopped today, consider it "paused"
+  const lastEntry = await getLastEntryForProject(projectId)
+  if (!lastEntry || !lastEntry.end_time) {
+    return null
+  }
+
+  // Consider it "paused" if the last entry was stopped within the last 24 hours
+  const endTime = new Date(lastEntry.end_time)
+  const now = new Date()
+  const hoursSinceStopped = (now.getTime() - endTime.getTime()) / (1000 * 60 * 60)
+
+  if (hoursSinceStopped <= 24) {
+    return lastEntry
+  }
+
+  return null
+}
+
+/**
+ * Get timer state for a project (running, paused, or stopped)
+ */
+export type TimerState = 'running' | 'paused' | 'stopped'
+
+export async function getTimerStateForProject(projectId: string): Promise<{
+  state: TimerState
+  entry: TimeEntry | null
+}> {
+  const runningTimer = await getRunningTimerForProject(projectId)
+  if (runningTimer) {
+    return { state: 'running', entry: runningTimer }
+  }
+
+  const pausedTimer = await getPausedTimerForProject(projectId)
+  if (pausedTimer) {
+    return { state: 'paused', entry: pausedTimer }
+  }
+
+  return { state: 'stopped', entry: null }
+}
+
+/**
  * Calculate elapsed seconds for a running timer
  */
 export function calculateElapsedSeconds(startTime: string): number {
