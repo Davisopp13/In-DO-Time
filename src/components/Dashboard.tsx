@@ -16,6 +16,7 @@ import {
   type RunningTimerWithProject,
 } from '@/lib/timer'
 import EmptyState from '@/components/EmptyState'
+import { seedDefaultClients } from '@/lib/seed'
 
 interface ProjectWithClient {
   id: string
@@ -69,6 +70,36 @@ export default function Dashboard() {
         .order('name')
 
       if (projectError) throw projectError
+
+      // Auto-seed default clients if no projects exist (first-time setup)
+      if (!projectData || projectData.length === 0) {
+        const { seeded } = await seedDefaultClients()
+        if (seeded) {
+          // Re-fetch projects after seeding
+          const { data: seededData, error: seededError } = await supabase
+            .from('projects')
+            .select('*, clients!inner(id, name, hourly_rate, color)')
+            .eq('status', 'active')
+            .order('name')
+          if (!seededError && seededData) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const seededProjects: ProjectWithClient[] = seededData.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              hourly_rate_override: p.hourly_rate_override,
+              status: p.status,
+              client_id: p.clients.id,
+              client_name: p.clients.name,
+              client_color: p.clients.color,
+              client_hourly_rate: p.clients.hourly_rate,
+              effectiveRate: p.hourly_rate_override ?? p.clients.hourly_rate,
+            }))
+            setProjects(seededProjects)
+            setLoading(false)
+            return
+          }
+        }
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedProjects: ProjectWithClient[] = (projectData || []).map((p: any) => ({

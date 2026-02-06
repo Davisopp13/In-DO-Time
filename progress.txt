@@ -641,3 +641,25 @@
   - Next.js loading.tsx is automatically shown during route transitions (App Router feature)
   - Time Log page already had excellent loading/error handling from iteration 18 - used as reference
 ---
+
+## Iteration 30 - Seed B.B. (GA Gymnastics State Meets) and Mariah (Evermore Equine) as default clients
+- What was implemented:
+  - Created SQL seed migration (002_seed_default_clients.sql) with idempotent INSERT statements
+  - B.B. client: hourly_rate $30, blue color (#2563EB), project "GA Gymnastics State Meets"
+  - Mariah client: hourly_rate $45, purple color (#7C3AED), project "Evermore Equine"
+  - Created src/lib/seed.ts with seedDefaultClients() function for client-side seeding
+  - Seed function checks for existing clients before inserting (idempotent)
+  - Integrated auto-seeding into Dashboard: if no projects exist on first load, seeds defaults
+  - Dashboard re-fetches projects after successful seed and renders immediately
+- Files changed:
+  - supabase/migrations/002_seed_default_clients.sql (new - SQL seed migration)
+  - src/lib/seed.ts (new - client-side seed utility)
+  - src/components/Dashboard.tsx (updated - auto-seed on first load)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - SQL WHERE NOT EXISTS pattern makes seed migrations idempotent (safe to re-run)
+  - Client-side seed function is useful for first-time app setup without SQL access
+  - Dashboard auto-seed triggers only when projectData.length === 0 (doesn't re-seed after deletions if clients still exist)
+  - Seed data rates/colors can be adjusted - these are reasonable defaults based on PRD UI mockup
+  - Two approaches: SQL migration for DB-level seed, JS function for app-level seed
+---
