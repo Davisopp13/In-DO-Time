@@ -551,3 +551,31 @@
   - PRD specifies larger logo for report exports vs nav (32-40px nav, larger for reports)
   - 48px works well as a report header size - prominent but not overwhelming
 ---
+
+## Iteration 27 - Responsive design pass (mobile + desktop)
+- What was implemented:
+  - Time Log page: moved edit/delete buttons to inline text on mobile (hidden icon buttons, show text buttons below entry), notes shown on separate line on mobile
+  - Reports page: reduced padding on client headers and project breakdowns for mobile (px-3, pl-8 vs px-5, pl-12), smaller font sizes for monospace values on mobile
+  - Reports page: hide "Time"/"Earned" sub-labels on mobile to save space, truncate long client/project names
+  - Clients page: added p-4 padding on modal overlay for mobile (prevents edge-to-edge modal)
+  - Projects page: same modal overlay padding fix
+  - Dashboard: recent activity entries have tighter gap/padding on mobile, notes hidden inline on small screens, smaller duration text on mobile
+  - Dashboard: timer control buttons slightly taller (py-2.5) on mobile for better touch targets
+  - Header: brand text slightly smaller (text-lg) on mobile, (text-xl) on sm+
+  - Layout: reduced vertical padding on mobile (py-6 vs py-8 on sm+)
+- Files changed:
+  - src/app/time-log/page.tsx (mobile action buttons, notes layout)
+  - src/app/reports/page.tsx (tighter spacing, responsive font sizes)
+  - src/app/clients/page.tsx (modal padding)
+  - src/app/projects/page.tsx (modal padding)
+  - src/components/Dashboard.tsx (recent activity, touch targets)
+  - src/components/Header.tsx (brand text size)
+  - src/app/layout.tsx (mobile padding)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Most of the responsive foundation was already solid (grid-cols responsive, flex-col/row patterns)
+  - Main issues were: overly generous padding on mobile, icon buttons too small for touch, notes causing overflow
+  - Pattern: hidden sm:flex for desktop-only elements, sm:hidden for mobile-only alternatives
+  - Touch targets should be at least py-2.5 (40px total height) on mobile
+  - Modals always need p-4 on the backdrop for safe mobile padding
+---

@@ -309,7 +309,7 @@ export default function TimeLogPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text">Time Log</h1>
           <p className="text-sm text-text-muted">
@@ -319,7 +319,7 @@ export default function TimeLogPage() {
         </div>
         <button
           onClick={openManualModal}
-          className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+          className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark self-start sm:self-auto"
         >
           + Manual Entry
         </button>
@@ -327,9 +327,9 @@ export default function TimeLogPage() {
 
       {/* Filters */}
       <div className="mb-6 rounded-card border border-border bg-background p-4 shadow-card">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           {/* Client filter */}
-          <div className="min-w-[160px] flex-1">
+          <div className="col-span-2 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
             <select
               value={selectedClient}
@@ -347,7 +347,7 @@ export default function TimeLogPage() {
           </div>
 
           {/* Project filter */}
-          <div className="min-w-[160px] flex-1">
+          <div className="col-span-2 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Project</label>
             <select
               value={selectedProject}
@@ -362,7 +362,7 @@ export default function TimeLogPage() {
           </div>
 
           {/* Start date */}
-          <div className="min-w-[150px] flex-1">
+          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">From</label>
             <input
               type="date"
@@ -373,7 +373,7 @@ export default function TimeLogPage() {
           </div>
 
           {/* End date */}
-          <div className="min-w-[150px] flex-1">
+          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">To</label>
             <input
               type="date"
@@ -385,12 +385,14 @@ export default function TimeLogPage() {
 
           {/* Clear filters */}
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
-            >
-              Clear
-            </button>
+            <div className="col-span-2 flex items-end sm:col-span-4 lg:col-span-1">
+              <button
+                onClick={clearFilters}
+                className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
+              >
+                Clear
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -435,7 +437,7 @@ export default function TimeLogPage() {
             return (
               <div key={date}>
                 {/* Date header */}
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
                     {date}
                   </h2>
@@ -464,75 +466,99 @@ export default function TimeLogPage() {
                       : 'Running'
 
                     return (
-                      <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
-                        {/* Client color indicator */}
-                        <span
-                          className="h-3 w-3 flex-shrink-0 rounded-full"
-                          style={{ backgroundColor: entry.client_color }}
-                        />
+                      <div key={entry.id} className="px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          {/* Client color indicator */}
+                          <span
+                            className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: entry.client_color }}
+                          />
 
-                        {/* Main info */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium text-text">
-                              {entry.project_name}
-                            </p>
-                            {entry.is_running && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-primary-light px-2 py-0.5 text-xs font-medium text-primary">
-                                <span className="relative flex h-1.5 w-1.5">
-                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                          {/* Main info */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-medium text-text">
+                                {entry.project_name}
+                              </p>
+                              {entry.is_running && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-primary-light px-2 py-0.5 text-xs font-medium text-primary">
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                                  </span>
+                                  Running
                                 </span>
-                                Running
-                              </span>
-                            )}
-                            {entry.is_manual && (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-text-muted">
-                                Manual
-                              </span>
+                              )}
+                              {entry.is_manual && (
+                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-text-muted">
+                                  Manual
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-text-muted">
+                              {entry.client_name} · {startTimeStr} – {endTimeStr}
+                              {entry.notes && (
+                                <span className="hidden sm:inline ml-1">· {entry.notes}</span>
+                              )}
+                            </p>
+                            {entry.notes && (
+                              <p className="sm:hidden text-xs text-text-muted truncate mt-0.5">{entry.notes}</p>
                             )}
                           </div>
-                          <p className="text-xs text-text-muted">
-                            {entry.client_name} · {startTimeStr} – {endTimeStr}
-                            {entry.notes && (
-                              <span className="ml-1">· {entry.notes}</span>
-                            )}
-                          </p>
-                        </div>
 
-                        {/* Edit + Delete buttons */}
+                          {/* Edit + Delete buttons + Duration/Cost */}
+                          <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+                            {!entry.is_running && (
+                              <div className="hidden sm:flex gap-1">
+                                <button
+                                  onClick={() => openEditModal(entry)}
+                                  className="rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
+                                  title="Edit entry"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => setDeletingEntry(entry)}
+                                  className="rounded-button p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600"
+                                  title="Delete entry"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Duration + Cost */}
+                            <div className="text-right">
+                              <p className="font-mono text-sm font-medium text-text">
+                                {entry.is_running ? '—' : formatDuration(duration)}
+                              </p>
+                              <p className="text-xs text-text-muted">
+                                {entry.is_running ? '—' : formatCurrency(cost)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Mobile action buttons */}
                         {!entry.is_running && (
-                          <div className="flex flex-shrink-0 gap-1">
+                          <div className="sm:hidden mt-2 ml-6 flex gap-2">
                             <button
                               onClick={() => openEditModal(entry)}
-                              className="rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
-                              title="Edit entry"
+                              className="rounded-button px-3 py-1 text-xs font-medium text-primary hover:bg-primary-light"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                              </svg>
+                              Edit
                             </button>
                             <button
                               onClick={() => setDeletingEntry(entry)}
-                              className="rounded-button p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600"
-                              title="Delete entry"
+                              className="rounded-button px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
+                              Delete
                             </button>
                           </div>
                         )}
-
-                        {/* Duration + Cost */}
-                        <div className="flex-shrink-0 text-right">
-                          <p className="font-mono text-sm font-medium text-text">
-                            {entry.is_running ? '—' : formatDuration(duration)}
-                          </p>
-                          <p className="text-xs text-text-muted">
-                            {entry.is_running ? '—' : formatCurrency(cost)}
-                          </p>
-                        </div>
                       </div>
                     )
                   })}

@@ -309,7 +309,7 @@ export default function ProjectsPage() {
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-card bg-background p-6 shadow-lg">
             <h2 className="mb-4 text-lg font-semibold text-text">
               {editingProject ? 'Edit Project' : 'Add New Project'}

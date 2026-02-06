@@ -295,7 +295,7 @@ export default function Dashboard() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-dark">
             Today&apos;s Summary
           </h2>
-          <div className="flex items-baseline gap-6">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-6">
             <div>
               <span className="font-mono text-2xl font-bold text-text">
                 {formatDuration(totalSeconds)}
@@ -394,14 +394,14 @@ export default function Dashboard() {
                     <button
                       onClick={() => handlePause(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
+                      className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
                     >
                       Pause
                     </button>
                     <button
                       onClick={() => handleStop(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-red-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                      className="flex-1 rounded-button bg-red-500 px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
                     >
                       Stop
                     </button>
@@ -410,7 +410,7 @@ export default function Dashboard() {
                   <button
                     onClick={() => handleResume(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
+                    className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50"
                   >
                     ▶ Resume
                   </button>
@@ -418,7 +418,7 @@ export default function Dashboard() {
                   <button
                     onClick={() => handleStart(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                    className="flex-1 rounded-button bg-primary px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
                   >
                     Start Timer
                   </button>
@@ -446,7 +446,7 @@ export default function Dashboard() {
               const timeRange = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
 
               return (
-                <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={entry.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3">
                   <span
                     className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
                     style={{ backgroundColor: entry.client_color }}
@@ -455,7 +455,7 @@ export default function Dashboard() {
                     <p className="truncate text-sm font-medium text-text">
                       {entry.project_name}
                       {entry.notes && (
-                        <span className="ml-1 font-normal text-text-muted">— {entry.notes}</span>
+                        <span className="hidden sm:inline ml-1 font-normal text-text-muted">— {entry.notes}</span>
                       )}
                     </p>
                     <p className="text-xs text-text-muted">
@@ -463,7 +463,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className="font-mono text-sm font-medium text-text">
+                    <p className="font-mono text-xs sm:text-sm font-medium text-text">
                       {formatDuration(entry.duration_seconds)}
                     </p>
                     <p className="text-xs text-text-muted">{formatCurrency(cost)}</p>

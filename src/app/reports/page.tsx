@@ -247,7 +247,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <Image
             src="/DO_CODE_LAB_LOGO_NO_TEXT.png"
@@ -267,7 +267,7 @@ export default function ReportsPage() {
         {reportEntries.length > 0 && (
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+            className="flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors self-start"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -279,8 +279,8 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <div className="mb-6 rounded-card border border-border bg-background p-4 shadow-card">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[160px] flex-1">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="col-span-2 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
             <select
               value={selectedClient}
@@ -294,7 +294,7 @@ export default function ReportsPage() {
             </select>
           </div>
 
-          <div className="min-w-[150px] flex-1">
+          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">From</label>
             <input
               type="date"
@@ -304,7 +304,7 @@ export default function ReportsPage() {
             />
           </div>
 
-          <div className="min-w-[150px] flex-1">
+          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">To</label>
             <input
               type="date"
@@ -315,12 +315,14 @@ export default function ReportsPage() {
           </div>
 
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
-            >
-              Clear
-            </button>
+            <div className="col-span-2 flex items-end sm:col-span-3 lg:col-span-1">
+              <button
+                onClick={clearFilters}
+                className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
+              >
+                Clear
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -328,7 +330,7 @@ export default function ReportsPage() {
       {/* Grand Totals */}
       {clientSummaries.length > 0 && (
         <div className="mb-6 rounded-card border border-primary bg-primary-light p-4 shadow-card">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-primary-dark">Total</p>
               <p className="text-xs text-text-muted">
@@ -336,13 +338,13 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="flex items-center gap-6">
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="font-mono text-lg font-semibold text-primary-dark">
                   {formatDuration(grandTotalSeconds)}
                 </p>
                 <p className="text-xs text-text-muted">Total Time</p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="font-mono text-lg font-semibold text-primary-dark">
                   {formatCurrency(grandTotalCost)}
                 </p>
@@ -382,32 +384,32 @@ export default function ReportsPage() {
               {/* Client Header */}
               <button
                 onClick={() => toggleCollapse(client.id)}
-                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface transition-colors"
+                className="flex w-full items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-4 text-left hover:bg-surface transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <span
                     className="h-4 w-4 flex-shrink-0 rounded-full"
                     style={{ backgroundColor: client.color }}
                   />
-                  <div>
-                    <p className="text-base font-semibold text-text">{client.name}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm sm:text-base font-semibold text-text truncate">{client.name}</p>
                     <p className="text-xs text-text-muted">
                       {client.entryCount} {client.entryCount === 1 ? 'entry' : 'entries'} · {client.projects.length} {client.projects.length === 1 ? 'project' : 'projects'}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                   <div className="text-right">
-                    <p className="font-mono text-sm font-semibold text-text">
+                    <p className="font-mono text-xs sm:text-sm font-semibold text-text">
                       {formatDuration(client.totalSeconds)}
                     </p>
-                    <p className="text-xs text-text-muted">Time</p>
+                    <p className="hidden sm:block text-xs text-text-muted">Time</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-sm font-semibold text-text">
+                    <p className="font-mono text-xs sm:text-sm font-semibold text-text">
                       {formatCurrency(client.totalCost)}
                     </p>
-                    <p className="text-xs text-text-muted">Earned</p>
+                    <p className="hidden sm:block text-xs text-text-muted">Earned</p>
                   </div>
                   {/* Collapse chevron */}
                   <svg
@@ -428,22 +430,22 @@ export default function ReportsPage() {
                     {client.projects.map((project) => (
                       <div
                         key={project.id}
-                        className="flex items-center justify-between gap-3 px-5 py-3 pl-12"
+                        className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-8 sm:pl-12"
                       >
-                        <div>
-                          <p className="text-sm font-medium text-text">{project.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-text truncate">{project.name}</p>
                           <p className="text-xs text-text-muted">
                             {project.entryCount} {project.entryCount === 1 ? 'entry' : 'entries'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                           <div className="text-right">
-                            <p className="font-mono text-sm text-text">
+                            <p className="font-mono text-xs sm:text-sm text-text">
                               {formatDuration(project.totalSeconds)}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-mono text-sm text-text">
+                            <p className="font-mono text-xs sm:text-sm text-text">
                               {formatCurrency(project.totalCost)}
                             </p>
                           </div>
