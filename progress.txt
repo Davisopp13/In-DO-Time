@@ -341,3 +341,21 @@
   - toLocaleTimeString with {hour: 'numeric', minute: '2-digit'} gives clean time display
   - Recent Activity auto-refreshes via loadData() being called after every timer action
 ---
+
+## Iteration 17 - Today's summary: total hours + total earnings
+- What was implemented:
+  - Added "Today's Summary" card at top of dashboard showing total hours and total earnings
+  - Aggregates completed entries (recentEntries) + currently running timers for real-time totals
+  - Running timer seconds tick live via the existing interval, keeping summary always current
+  - Styled with primary-light background, brand colors, monospace numbers
+  - Summary only appears when there's activity (totalSeconds > 0)
+- Files changed:
+  - src/components/Dashboard.tsx (added summary calculation logic + JSX section)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - recentEntries already has all data needed for completed time totals (duration_seconds + effectiveRate)
+  - Running timer totals computed by iterating runningTimers Map and looking up project rates
+  - calculateRunningCost(seconds, rate) reused for both completed and running calculations
+  - Summary updates live because runningTimers state updates every second via setInterval
+  - Used &apos; for apostrophe in JSX to satisfy ESLint react/no-unescaped-entities
+---

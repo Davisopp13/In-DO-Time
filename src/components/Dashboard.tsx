@@ -266,9 +266,53 @@ export default function Dashboard() {
 
   const runningCount = runningTimers.size
 
+  // Calculate today's summary: completed entries + running timers
+  const completedSeconds = recentEntries.reduce((sum, e) => sum + e.duration_seconds, 0)
+  const completedEarnings = recentEntries.reduce(
+    (sum, e) => sum + calculateRunningCost(e.duration_seconds, e.effectiveRate),
+    0
+  )
+
+  let runningSeconds = 0
+  let runningEarnings = 0
+  runningTimers.forEach((timer, projectId) => {
+    runningSeconds += timer.elapsedSeconds
+    const project = projects.find((p) => p.id === projectId)
+    if (project) {
+      runningEarnings += calculateRunningCost(timer.elapsedSeconds, project.effectiveRate)
+    }
+  })
+
+  const totalSeconds = completedSeconds + runningSeconds
+  const totalEarnings = completedEarnings + runningEarnings
+  const showSummary = totalSeconds > 0
+
   return (
     <div>
-      {/* Summary bar */}
+      {/* Today's Summary */}
+      {showSummary && (
+        <div className="mb-6 rounded-card border border-border bg-primary-light p-4 shadow-card">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-dark">
+            Today&apos;s Summary
+          </h2>
+          <div className="flex items-baseline gap-6">
+            <div>
+              <span className="font-mono text-2xl font-bold text-text">
+                {formatDuration(totalSeconds)}
+              </span>
+              <span className="ml-1 text-sm text-text-muted">total hours</span>
+            </div>
+            <div>
+              <span className="font-mono text-2xl font-bold text-primary">
+                {formatCurrency(totalEarnings)}
+              </span>
+              <span className="ml-1 text-sm text-text-muted">earned</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Running timers indicator */}
       {runningCount > 0 && (
         <div className="mb-4 flex items-center gap-2 text-sm text-text-muted">
           <span className="relative flex h-2.5 w-2.5">

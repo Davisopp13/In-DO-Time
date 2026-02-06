@@ -117,7 +117,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Green pulsing indicator for running timers, amber accent for active states
 - [x] Quick-start: click a project card to begin timing
 - [x] "Recent Activity" section below cards showing today's logged entries
-- [ ] Today's summary: total hours + total earnings
+- [x] Today's summary: total hours + total earnings
 - [x] Responsive layout: 3 columns desktop, 1 column mobile
 
 ### Phase 4: Time Log & Reports (Days 4-6)
