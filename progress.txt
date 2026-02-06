@@ -19,3 +19,43 @@
   - create-next-app doesn't allow spaces or caps in project names - must use subdirectory approach
   - Logo placed at public/DO_CODE_LAB_LOGO_NO_TEXT.png as specified in PRD
 ---
+
+## Iteration 2 - Set up Supabase client and environment variables
+- What was implemented:
+  - Created .env.example with Supabase URL and anon key template
+  - Created .env.local for local development (gitignored)
+  - Created src/lib/supabase.ts with typed Supabase client
+  - Created src/types/database.ts with full TypeScript types matching PRD schema
+  - Updated .gitignore to track .env.example but ignore .env.local
+- Files changed:
+  - .env.example (new)
+  - .env.local (new, gitignored)
+  - src/lib/supabase.ts (new)
+  - src/types/database.ts (new)
+  - .gitignore (updated)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - @supabase/supabase-js was already installed in package.json
+  - Database types include Row, Insert, Update variants for each table
+  - Convenience types (Client, Project, TimeEntry) exported for easier use
+  - Next.js build confirms .env.local is loaded (shows "Environments: .env.local")
+---
+
+## Iteration 3 - Run database schema migration (create all 3 tables + indexes)
+- What was implemented:
+  - Created supabase/migrations/001_initial_schema.sql with full schema
+  - All 3 tables: clients, projects, time_entries
+  - All 3 indexes: idx_time_entries_project, idx_time_entries_start, idx_projects_client
+  - Added updated_at triggers for automatic timestamp updates
+  - Enabled RLS with permissive policies (single-user MVP, no auth)
+  - Created supabase/README.md with setup instructions
+- Files changed:
+  - supabase/migrations/001_initial_schema.sql (new)
+  - supabase/README.md (new)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Migration file uses IF NOT EXISTS for idempotent runs
+  - RLS must be enabled with permissive policies for anon access
+  - Migration is meant to be run in Supabase SQL Editor (not automated CLI)
+  - Build and lint pass - project remains in healthy state
+---
