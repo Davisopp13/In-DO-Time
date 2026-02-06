@@ -409,3 +409,17 @@
   - End date needs setHours(23,59,59,999) to include entries on that day
   - `next/link` Link component required instead of `<a>` for internal navigation (ESLint rule)
 ---
+
+## Iteration 20 - Each entry: project, client, start/end time, duration, calculated cost
+- What was implemented:
+  - Verified this was already fully implemented in Iteration 18 (Time Log page)
+  - Each entry shows: project name, client name, start/end time, duration (HH:MM:SS), calculated cost
+  - Running entries show "Running" badge and "—" for duration/cost
+  - No code changes needed - just marked the PRD task complete
+- Files changed:
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Some PRD tasks overlap with earlier implementations - always check existing code first
+  - The time-log/page.tsx already had all required fields from the initial implementation
+  - Build and typecheck both pass cleanly
+---
