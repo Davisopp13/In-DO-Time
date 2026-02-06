@@ -1,0 +1,21 @@
+# Progress Notes - In DO Time
+
+## Iteration 1 - Scaffold Next.js project with TailwindCSS and App Router
+- What was implemented:
+  - Scaffolded Next.js 16.1.6 with App Router and TypeScript
+  - TailwindCSS 4.x configured with PostCSS
+  - ESLint configured for Next.js
+  - Source files in `src/` directory with `@/*` import alias
+  - Moved DO Code Lab logo to `public/DO_CODE_LAB_LOGO_NO_TEXT.png`
+- Files changed:
+  - Created standard Next.js project structure
+  - package.json (name: "in-do-time")
+  - src/app/layout.tsx, page.tsx, globals.css
+  - tsconfig.json, next.config.ts, tailwind.config.ts
+  - postcss.config.mjs, eslint.config.mjs
+- Learnings for future iterations:
+  - Next.js 16 uses TailwindCSS v4 with new PostCSS plugin (@tailwindcss/postcss)
+  - React 19 is bundled with Next.js 16
+  - create-next-app doesn't allow spaces or caps in project names - must use subdirectory approach
+  - Logo placed at public/DO_CODE_LAB_LOGO_NO_TEXT.png as specified in PRD
+---
