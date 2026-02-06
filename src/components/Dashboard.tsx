@@ -15,6 +15,7 @@ import {
   formatCurrency,
   type RunningTimerWithProject,
 } from '@/lib/timer'
+import EmptyState from '@/components/EmptyState'
 
 interface ProjectWithClient {
   id: string
@@ -247,20 +248,17 @@ export default function Dashboard() {
 
   if (projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-card border border-border bg-background py-16 shadow-card">
-        <p className="mb-2 text-lg font-semibold text-text">No active projects</p>
-        <p className="text-text-muted">
-          Add a client and project from the{' '}
-          <a href="/clients" className="font-medium text-primary hover:text-primary-dark">
-            Clients
-          </a>{' '}
-          or{' '}
-          <a href="/projects" className="font-medium text-primary hover:text-primary-dark">
-            Projects
-          </a>{' '}
-          page to get started.
-        </p>
-      </div>
+      <EmptyState title="No active projects">
+        Add a client and project from the{' '}
+        <a href="/clients" className="font-medium text-primary hover:text-primary-dark">
+          Clients
+        </a>{' '}
+        or{' '}
+        <a href="/projects" className="font-medium text-primary hover:text-primary-dark">
+          Projects
+        </a>{' '}
+        page to get started.
+      </EmptyState>
     )
   }
 

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
 import { generateCSV, downloadCSV, generateCSVFilename } from '@/lib/csv'
+import EmptyState from '@/components/EmptyState'
 
 interface ReportEntry {
   id: string
@@ -357,23 +358,18 @@ export default function ReportsPage() {
 
       {/* Client Summaries */}
       {clientSummaries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-card border border-border bg-background py-16 shadow-card">
-          <p className="mb-2 text-lg font-semibold text-text">
-            {hasFilters ? 'No matching entries' : 'No completed time entries yet'}
-          </p>
-          <p className="text-text-muted">
-            {hasFilters ? (
-              <button
-                onClick={clearFilters}
-                className="font-medium text-primary hover:text-primary-dark"
-              >
-                Clear filters
-              </button>
-            ) : (
-              'Complete some timer sessions to see your report.'
-            )}
-          </p>
-        </div>
+        <EmptyState title={hasFilters ? 'No matching entries' : 'No completed time entries yet'}>
+          {hasFilters ? (
+            <button
+              onClick={clearFilters}
+              className="font-medium text-primary hover:text-primary-dark"
+            >
+              Clear filters
+            </button>
+          ) : (
+            'Complete some timer sessions to see your report.'
+          )}
+        </EmptyState>
       ) : (
         <div className="space-y-4">
           {clientSummaries.map((client) => (

@@ -579,3 +579,30 @@
   - Touch targets should be at least py-2.5 (40px total height) on mobile
   - Modals always need p-4 on the backdrop for safe mobile padding
 ---
+
+## Iteration 28 - Empty states with DO Code Lab logo watermark
+- What was implemented:
+  - Created reusable EmptyState component (src/components/EmptyState.tsx) with DO Code Lab logo watermark
+  - Logo displayed at 64x64px with 20% opacity for subtle watermark effect
+  - Updated 5 empty states across the app to use the new component:
+    - Clients page: "No clients found" / "No active clients"
+    - Projects page: "No projects found" / "No active projects"
+    - Time Log page: "No time entries yet" / "No matching entries" (with filter clear button / dashboard link)
+    - Reports page: "No completed time entries yet" / "No matching entries" (with filter clear button)
+    - Dashboard: "No active projects" (with links to Clients/Projects pages)
+  - All empty states now centered with logo watermark, title, and descriptive message
+- Files changed:
+  - src/components/EmptyState.tsx (new - reusable empty state component)
+  - src/app/clients/page.tsx (updated - import + use EmptyState)
+  - src/app/projects/page.tsx (updated - import + use EmptyState)
+  - src/app/time-log/page.tsx (updated - import + use EmptyState)
+  - src/app/reports/page.tsx (updated - import + use EmptyState)
+  - src/components/Dashboard.tsx (updated - import + use EmptyState)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Reusable EmptyState component with title + children pattern is clean and DRY
+  - Image with alt="" for decorative images (logo watermark is not informational)
+  - opacity-20 gives a nice subtle watermark effect without being distracting
+  - EmptyState accepts ReactNode children so it can contain links, buttons, or plain text
+  - All 5 pages had slightly different empty state patterns - component normalizes them
+---

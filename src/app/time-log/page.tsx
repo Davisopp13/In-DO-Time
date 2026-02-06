@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry, deleteTimeEntry, createManualEntry } from '@/lib/timer'
+import EmptyState from '@/components/EmptyState'
 
 interface TimeLogEntry {
   id: string
@@ -398,29 +399,24 @@ export default function TimeLogPage() {
       </div>
 
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-card border border-border bg-background py-16 shadow-card">
-          <p className="mb-2 text-lg font-semibold text-text">
-            {hasFilters ? 'No matching entries' : 'No time entries yet'}
-          </p>
-          <p className="text-text-muted">
-            {hasFilters ? (
-              <button
-                onClick={clearFilters}
-                className="font-medium text-primary hover:text-primary-dark"
-              >
-                Clear filters
-              </button>
-            ) : (
-              <>
-                Start a timer from the{' '}
-                <Link href="/" className="font-medium text-primary hover:text-primary-dark">
-                  Dashboard
-                </Link>{' '}
-                to begin tracking time.
-              </>
-            )}
-          </p>
-        </div>
+        <EmptyState title={hasFilters ? 'No matching entries' : 'No time entries yet'}>
+          {hasFilters ? (
+            <button
+              onClick={clearFilters}
+              className="font-medium text-primary hover:text-primary-dark"
+            >
+              Clear filters
+            </button>
+          ) : (
+            <>
+              Start a timer from the{' '}
+              <Link href="/" className="font-medium text-primary hover:text-primary-dark">
+                Dashboard
+              </Link>{' '}
+              to begin tracking time.
+            </>
+          )}
+        </EmptyState>
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedEntries).map(([date, dayEntries]) => {

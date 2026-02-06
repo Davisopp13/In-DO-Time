@@ -133,7 +133,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 
 ### Phase 5: Polish & Deploy (Days 6-7)
 - [x] Responsive design pass (mobile + desktop)
-- [ ] Empty states with DO Code Lab logo watermark
+- [x] Empty states with DO Code Lab logo watermark
 - [ ] Loading states and error handling
 - [ ] Seed B.B. (GA Gymnastics State Meets) and Mariah (Evermore Equine) as default clients
 - [ ] Deploy to Vercel

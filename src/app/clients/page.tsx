@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Client, ClientInsert, ClientUpdate } from '@/types/database';
+import EmptyState from '@/components/EmptyState';
 
 // Default colors for client color picker
 const CLIENT_COLORS = [
@@ -198,11 +199,9 @@ export default function ClientsPage() {
       {loading ? (
         <div className="text-center py-12 text-text-muted">Loading clients...</div>
       ) : clients.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-text-muted">
-            {showArchived ? 'No clients found.' : 'No active clients. Add your first client!'}
-          </p>
-        </div>
+        <EmptyState title={showArchived ? 'No clients found' : 'No active clients'}>
+          {showArchived ? 'Try disabling the archived filter.' : 'Add your first client to get started!'}
+        </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clients.map((client) => (

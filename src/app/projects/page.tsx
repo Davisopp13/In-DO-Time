@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Client, Project, ProjectInsert, ProjectUpdate } from '@/types/database';
+import EmptyState from '@/components/EmptyState';
 
 // Extended project type with client info for display
 type ProjectWithClient = Project & {
@@ -248,11 +249,9 @@ export default function ProjectsPage() {
       {loading ? (
         <div className="text-center py-12 text-text-muted">Loading projects...</div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-text-muted">
-            {showArchived ? 'No projects found.' : 'No active projects. Add your first project!'}
-          </p>
-        </div>
+        <EmptyState title={showArchived ? 'No projects found' : 'No active projects'}>
+          {showArchived ? 'Try disabling the archived filter.' : 'Add your first project to get started!'}
+        </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
