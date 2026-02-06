@@ -153,3 +153,23 @@
   - getEffectiveRate helper function determines if override or client rate applies
   - Disable "Add Project" button when no clients exist (required foreign key)
 ---
+
+## Iteration 8 - Create timer engine: start timer → creates time_entry with is_running=true
+- What was implemented:
+  - Created src/lib/timer.ts with core timer engine functions
+  - startTimer(projectId, notes?) → creates time_entry with is_running=true, start_time=now
+  - getRunningTimers() → fetches all time entries where is_running=true
+  - getRunningTimerForProject(projectId) → get running timer for specific project
+  - hasRunningTimer(projectId) → boolean check if project has running timer
+  - Helper utilities: calculateElapsedSeconds, formatDuration, calculateRunningCost, formatCurrency
+- Files changed:
+  - src/lib/timer.ts (new - timer engine core)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Timer engine is a pure TypeScript lib file (not a React component)
+  - Uses getSupabase() pattern for lazy client initialization
+  - TimeEntryInsert type matches database schema exactly
+  - PGRST116 error code means "no rows found" - expected when checking for running timers
+  - formatDuration returns HH:MM:SS format, padded with zeros
+  - Timer state persists in Supabase - can survive browser refresh
+---
