@@ -9,6 +9,7 @@ const navItems = [
   { href: '/time-log', label: 'Time Log' },
   { href: '/reports', label: 'Reports' },
   { href: '/clients', label: 'Clients' },
+  { href: '/projects', label: 'Projects' },
 ];
 
 export default function Header() {

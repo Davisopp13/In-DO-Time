@@ -129,3 +129,27 @@
   - Use refreshTrigger pattern to trigger re-fetches: increment counter + add to useEffect deps
   - Client colors stored as hex strings in database, rendered with inline styles
 ---
+
+## Iteration 7 - Build Project CRUD (add, edit, archive projects under clients with optional rate override)
+- What was implemented:
+  - Created /projects page with full CRUD functionality
+  - List view shows all projects in card-based grid layout with client color border
+  - Each card displays: project name, client name, effective hourly rate, edit/archive buttons
+  - Add project modal with form: client selection (dropdown), name, optional hourly rate override
+  - Edit project functionality reuses same modal
+  - Archive/restore functionality with confirmation dialog
+  - Toggle to show/hide archived projects
+  - Shows warning when no clients exist (can't create projects without a client)
+  - Displays "(override)" indicator when project uses custom rate vs client rate
+  - Added Projects link to Header navigation
+- Files changed:
+  - src/app/projects/page.tsx (new - full Project CRUD page)
+  - src/components/Header.tsx (updated - added Projects nav link)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Supabase select with relations: `.select('*, clients(id, name, color, hourly_rate)')`
+  - Relations come back as nested object (project.clients.name)
+  - Use Promise.all to load multiple resources (projects + clients) in parallel
+  - getEffectiveRate helper function determines if override or client rate applies
+  - Disable "Add Project" button when no clients exist (required foreign key)
+---

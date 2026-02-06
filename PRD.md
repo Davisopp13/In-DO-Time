@@ -100,7 +100,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Place DO Code Lab logo in `public/` and generate favicon
 - [x] Create app layout with branded header (logo + "In DO Time" + nav)
 - [x] Build Client CRUD (add, edit, archive clients with name, hourly rate, color)
-- [ ] Build Project CRUD (add, edit, archive projects under clients with optional rate override)
+- [x] Build Project CRUD (add, edit, archive projects under clients with optional rate override)
 
 ### Phase 2: Timer Engine (Days 2-3)
 - [ ] Create timer engine: start timer → creates time_entry with is_running=true
