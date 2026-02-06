@@ -128,7 +128,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Delete entries with confirmation dialog
 - [x] Manual time entry option (add time after the fact)
 - [x] Reports page: summary view grouped by client → project
-- [ ] CSV export filtered by client + date range
+- [x] CSV export filtered by client + date range
 - [ ] Include DO Code Lab logo in report header
 
 ### Phase 5: Polish & Deploy (Days 6-7)

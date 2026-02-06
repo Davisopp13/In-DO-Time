@@ -511,3 +511,27 @@
   - Grand totals computed from clientSummaries array with reduce
   - Header already had /reports nav link from iteration 5
 ---
+
+## Iteration 25 - CSV export filtered by client + date range
+- What was implemented:
+  - Created src/lib/csv.ts with CSV generation, download, and filename utilities
+  - generateCSV() creates CSV with columns: Client, Project, Date, Start/End Time, Duration, Hours (Decimal), Hourly Rate, Cost, Notes, Type
+  - escapeCSV() handles commas, quotes, and newlines in field values
+  - downloadCSV() triggers browser file download via Blob URL
+  - generateCSVFilename() creates descriptive filename based on active filters
+  - Added "Export CSV" button to Reports page header (green primary button with download icon)
+  - Button only appears when there are entries to export
+  - CSV export uses the same filtered data as the on-screen report (same client + date range filters)
+  - Added end_time, notes, is_manual fields to ReportEntry interface and Supabase query
+  - Stored reportEntries in state for CSV generation
+- Files changed:
+  - src/lib/csv.ts (new - CSV generation and download utilities)
+  - src/app/reports/page.tsx (updated - added Export CSV button, expanded query fields, stored entries)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - CSV export uses native JS Blob + URL.createObjectURL for browser download (no library needed)
+  - Filename includes filter context (client name, date range) for easy identification
+  - ReportEntry interface needed expansion (end_time, notes, is_manual) for complete CSV rows
+  - Export button conditionally rendered based on reportEntries.length > 0
+  - Hours (Decimal) column useful for invoicing (e.g., 1.50 = 1h 30m)
+---

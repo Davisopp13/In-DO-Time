@@ -3,12 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
+import { generateCSV, downloadCSV, generateCSVFilename } from '@/lib/csv'
 
 interface ReportEntry {
   id: string
   start_time: string
+  end_time: string | null
   duration_seconds: number | null
   is_running: boolean
+  is_manual: boolean
+  notes: string | null
   project_id: string
   project_name: string
   client_id: string
@@ -37,6 +41,7 @@ interface ClientSummary {
 
 export default function ReportsPage() {
   const [clientSummaries, setClientSummaries] = useState<ClientSummary[]>([])
+  const [reportEntries, setReportEntries] = useState<ReportEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -67,7 +72,7 @@ export default function ReportsPage() {
       let query = supabase
         .from('time_entries')
         .select(`
-          id, start_time, duration_seconds, is_running,
+          id, start_time, end_time, duration_seconds, is_running, is_manual, notes,
           project_id,
           projects!inner(
             id,
@@ -101,8 +106,11 @@ export default function ReportsPage() {
       const entries: ReportEntry[] = (data || []).map((e: any) => ({
         id: e.id,
         start_time: e.start_time,
+        end_time: e.end_time,
         duration_seconds: e.duration_seconds,
         is_running: e.is_running,
+        is_manual: e.is_manual,
+        notes: e.notes,
         project_id: e.project_id,
         project_name: e.projects.name,
         client_id: e.projects.client_id,
@@ -110,6 +118,9 @@ export default function ReportsPage() {
         client_color: e.projects.clients.color,
         effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
       }))
+
+      // Store entries for CSV export
+      setReportEntries(entries)
 
       // Group by client → project
       const clientMap = new Map<string, ClientSummary>()
@@ -184,6 +195,28 @@ export default function ReportsPage() {
 
   const hasFilters = selectedClient || startDate || endDate
 
+  const handleExportCSV = () => {
+    if (reportEntries.length === 0) return
+
+    const csvEntries = reportEntries.map((e) => ({
+      client_name: e.client_name,
+      project_name: e.project_name,
+      start_time: e.start_time,
+      end_time: e.end_time,
+      duration_seconds: e.duration_seconds,
+      notes: e.notes,
+      is_manual: e.is_manual,
+      effectiveRate: e.effectiveRate,
+    }))
+
+    const csv = generateCSV(csvEntries)
+    const clientName = selectedClient
+      ? clients.find((c) => c.id === selectedClient)?.name
+      : undefined
+    const filename = generateCSVFilename(clientName, startDate, endDate)
+    downloadCSV(csv, filename)
+  }
+
   // Grand totals
   const grandTotalSeconds = clientSummaries.reduce((sum, c) => sum + c.totalSeconds, 0)
   const grandTotalCost = clientSummaries.reduce((sum, c) => sum + c.totalCost, 0)
@@ -213,12 +246,25 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">Reports</h1>
-        <p className="text-sm text-text-muted">
-          Summary by client and project
-          {hasFilters ? ' (filtered)' : ''}
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-text">Reports</h1>
+          <p className="text-sm text-text-muted">
+            Summary by client and project
+            {hasFilters ? ' (filtered)' : ''}
+          </p>
+        </div>
+        {reportEntries.length > 0 && (
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* Filters */}
