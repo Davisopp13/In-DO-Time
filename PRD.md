@@ -95,7 +95,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 
 ### Phase 1: Foundation (Days 1-2)
 - [x] Scaffold Next.js project with TailwindCSS and App Router
-- [ ] Set up Supabase client and environment variables
+- [x] Set up Supabase client and environment variables
 - [ ] Run database schema migration (create all 3 tables + indexes)
 - [ ] Place DO Code Lab logo in `public/` and generate favicon
 - [ ] Create app layout with branded header (logo + "In DO Time" + nav)
