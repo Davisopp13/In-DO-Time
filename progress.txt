@@ -298,3 +298,24 @@
   - Supabase nested select with !inner ensures only projects with valid clients are returned
   - eslint @typescript-eslint/no-explicit-any needed for Supabase join return types
 ---
+
+## Iteration 15 - Quick-start: click a project card to begin timing + mark already-done Phase 3 tasks
+- What was implemented:
+  - Made project cards clickable for quick-start: clicking an idle card starts timer, clicking paused card resumes
+  - Added stopPropagation on controls div to prevent card click from firing when using buttons
+  - Added cursor-pointer class for clickable cards (idle + paused states)
+  - Running cards are not clickable (they already have dedicated Pause/Stop buttons)
+  - Marked 4 Phase 3 tasks as complete that were already implemented in Iteration 14:
+    - Each card: client name, project name, live elapsed time (ticking), running cost
+    - Start/Stop/Pause buttons per card
+    - Green pulsing indicator for running timers, amber accent for active states
+    - Responsive layout: 3 columns desktop, 1 column mobile
+- Files changed:
+  - src/components/Dashboard.tsx (added card click handler + stopPropagation on controls)
+  - PRD.md (marked 5 Phase 3 tasks complete)
+- Learnings for future iterations:
+  - Many Phase 3 tasks were already implemented during Iteration 14 (card-based dashboard)
+  - Always check existing implementation before starting new work
+  - stopPropagation on button container prevents card-level click from firing on button clicks
+  - canQuickStart flag prevents accidental double-starts when a timer is already running
+---

@@ -242,12 +242,18 @@ export default function Dashboard() {
           const isPaused = pausedProjects.has(project.id)
           const isDisabled = actionLoading === project.id
 
+          const canQuickStart = !isRunning && !isPaused && !isDisabled
+
           return (
             <div
               key={project.id}
+              onClick={() => {
+                if (canQuickStart) handleStart(project.id)
+                else if (isPaused && !isRunning && !isDisabled) handleResume(project.id)
+              }}
               className={`relative overflow-hidden rounded-card border-2 bg-background p-5 shadow-card transition-shadow hover:shadow-md ${
                 isRunning ? 'ring-2 ring-primary/20' : ''
-              }`}
+              } ${canQuickStart || (isPaused && !isRunning) ? 'cursor-pointer' : ''}`}
               style={{ borderColor: project.client_color }}
             >
               {/* Status indicator */}
@@ -291,7 +297,7 @@ export default function Dashboard() {
               )}
 
               {/* Controls */}
-              <div className="flex gap-2">
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                 {isRunning ? (
                   <>
                     <button

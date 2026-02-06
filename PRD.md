@@ -112,13 +112,13 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 
 ### Phase 3: Dashboard UI (Days 3-4)
 - [x] Card-based dashboard showing all active projects with timer controls
-- [ ] Each card: client name, project name, live elapsed time (ticking), running cost
-- [ ] Start/Stop/Pause buttons per card
-- [ ] Green pulsing indicator for running timers, amber accent for active states
-- [ ] Quick-start: click a project card to begin timing
+- [x] Each card: client name, project name, live elapsed time (ticking), running cost
+- [x] Start/Stop/Pause buttons per card
+- [x] Green pulsing indicator for running timers, amber accent for active states
+- [x] Quick-start: click a project card to begin timing
 - [ ] "Recent Activity" section below cards showing today's logged entries
 - [ ] Today's summary: total hours + total earnings
-- [ ] Responsive layout: 3 columns desktop, 1 column mobile
+- [x] Responsive layout: 3 columns desktop, 1 column mobile
 
 ### Phase 4: Time Log & Reports (Days 4-6)
 - [ ] Time log page: chronological list of all time entries
