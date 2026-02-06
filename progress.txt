@@ -464,3 +464,25 @@
   - Supabase .delete().eq('id', id) returns no data by default, just error on failure
   - Reused same modal overlay pattern: fixed inset-0 z-50 bg-black/50
 ---
+
+## Iteration 23 - Manual time entry option (add time after the fact)
+- What was implemented:
+  - Added createManualEntry() function to src/lib/timer.ts
+  - Creates time_entry with is_manual=true, is_running=false, pre-calculated duration
+  - Validates end time > start time before insert
+  - Added "+ Manual Entry" button in Time Log page header
+  - Added manual entry modal with project dropdown, start/end datetime pickers, notes field
+  - Form validation: project required, both times required, end must be after start
+  - Entry list refreshes after successful save
+  - Modal reuses existing project list from filter dropdowns (loaded on mount)
+- Files changed:
+  - src/lib/timer.ts (added createManualEntry function)
+  - src/app/time-log/page.tsx (added manual entry button, state, modal, handler)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - createManualEntry is simpler than startTimer - no is_running checks needed
+  - Reused projects list from filter dropdown state - no additional Supabase query needed
+  - Manual entries get is_manual=true flag, already displayed with "Manual" badge in time log
+  - Same modal overlay pattern: fixed inset-0 z-50 bg-black/50
+  - datetime-local inputs work well for manual entry (user picks exact date+time)
+---

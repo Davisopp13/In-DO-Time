@@ -126,7 +126,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Each entry: project, client, start/end time, duration, calculated cost
 - [x] Edit entries (adjust start/end times for corrections)
 - [x] Delete entries with confirmation dialog
-- [ ] Manual time entry option (add time after the fact)
+- [x] Manual time entry option (add time after the fact)
 - [ ] Reports page: summary view grouped by client → project
 - [ ] CSV export filtered by client + date range
 - [ ] Include DO Code Lab logo in report header

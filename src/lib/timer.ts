@@ -515,6 +515,49 @@ export async function deleteTimeEntry(timeEntryId: string): Promise<TimerResult>
 }
 
 /**
+ * Create a manual time entry (add time after the fact)
+ * Requires project_id, start_time, end_time; calculates duration automatically
+ */
+export async function createManualEntry(
+  projectId: string,
+  startTime: string,
+  endTime: string,
+  notes?: string
+): Promise<TimerResult> {
+  const supabase = getSupabase()
+
+  const start = new Date(startTime)
+  const end = new Date(endTime)
+  const durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000)
+
+  if (durationSeconds <= 0) {
+    return { success: false, error: 'End time must be after start time' }
+  }
+
+  const newEntry: TimeEntryInsert = {
+    project_id: projectId,
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
+    duration_seconds: durationSeconds,
+    is_running: false,
+    is_manual: true,
+    notes: notes || null,
+  }
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .insert(newEntry)
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, timeEntry: data }
+}
+
+/**
  * Count of currently running timers
  * Quick check for dashboard indicators
  */

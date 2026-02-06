@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
-import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry, deleteTimeEntry } from '@/lib/timer'
+import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry, deleteTimeEntry, createManualEntry } from '@/lib/timer'
 
 interface TimeLogEntry {
   id: string
@@ -50,6 +50,15 @@ export default function TimeLogPage() {
   // Delete state
   const [deletingEntry, setDeletingEntry] = useState<TimeLogEntry | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Manual entry state
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [manualProject, setManualProject] = useState('')
+  const [manualStartTime, setManualStartTime] = useState('')
+  const [manualEndTime, setManualEndTime] = useState('')
+  const [manualNotes, setManualNotes] = useState('')
+  const [manualSaving, setManualSaving] = useState(false)
+  const [manualError, setManualError] = useState<string | null>(null)
 
   // Load clients and projects for filter dropdowns
   useEffect(() => {
@@ -214,6 +223,53 @@ export default function TimeLogPage() {
     }
   }
 
+  const openManualModal = () => {
+    setShowManualModal(true)
+    setManualProject('')
+    setManualStartTime('')
+    setManualEndTime('')
+    setManualNotes('')
+    setManualError(null)
+  }
+
+  const handleManualSave = async () => {
+    if (!manualProject) {
+      setManualError('Please select a project')
+      return
+    }
+    if (!manualStartTime || !manualEndTime) {
+      setManualError('Please set both start and end times')
+      return
+    }
+
+    const startDt = new Date(manualStartTime)
+    const endDt = new Date(manualEndTime)
+    if (endDt <= startDt) {
+      setManualError('End time must be after start time')
+      return
+    }
+
+    setManualSaving(true)
+    setManualError(null)
+
+    const result = await createManualEntry(
+      manualProject,
+      startDt.toISOString(),
+      endDt.toISOString(),
+      manualNotes || undefined
+    )
+
+    setManualSaving(false)
+
+    if (!result.success) {
+      setManualError(result.error || 'Failed to create entry')
+      return
+    }
+
+    setShowManualModal(false)
+    loadEntries()
+  }
+
   const hasFilters = selectedClient || selectedProject || startDate || endDate
 
   // Group entries by date
@@ -261,6 +317,12 @@ export default function TimeLogPage() {
             {hasFilters ? ' (filtered)' : ' total'}
           </p>
         </div>
+        <button
+          onClick={openManualModal}
+          className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+        >
+          + Manual Entry
+        </button>
       </div>
 
       {/* Filters */}
@@ -509,6 +571,84 @@ export default function TimeLogPage() {
                 className="rounded-button bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Entry Modal */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-card border border-border bg-background p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold text-text">Add Manual Time Entry</h2>
+
+            {manualError && (
+              <div className="mb-4 rounded-button bg-red-50 p-3 text-sm text-red-600">
+                {manualError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">Project</label>
+                <select
+                  value={manualProject}
+                  onChange={(e) => setManualProject(e.target.value)}
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Select a project...</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={manualStartTime}
+                  onChange={(e) => setManualStartTime(e.target.value)}
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">End Time</label>
+                <input
+                  type="datetime-local"
+                  value={manualEndTime}
+                  onChange={(e) => setManualEndTime(e.target.value)}
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-text">Notes</label>
+                <input
+                  type="text"
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  placeholder="Optional notes"
+                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleManualSave}
+                disabled={manualSaving}
+                className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+              >
+                {manualSaving ? 'Saving...' : 'Add Entry'}
               </button>
             </div>
           </div>
