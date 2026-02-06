@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
 
@@ -13,9 +14,16 @@ interface TimeLogEntry {
   is_running: boolean
   is_manual: boolean
   project_name: string
+  project_id: string
   client_name: string
+  client_id: string
   client_color: string
   effectiveRate: number
+}
+
+interface FilterOption {
+  id: string
+  name: string
 }
 
 export default function TimeLogPage() {
@@ -23,21 +31,75 @@ export default function TimeLogPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Filter state
+  const [clients, setClients] = useState<FilterOption[]>([])
+  const [projects, setProjects] = useState<FilterOption[]>([])
+  const [selectedClient, setSelectedClient] = useState('')
+  const [selectedProject, setSelectedProject] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Load clients and projects for filter dropdowns
+  useEffect(() => {
+    async function loadFilterOptions() {
+      const supabase = getSupabase()
+      const [clientsRes, projectsRes] = await Promise.all([
+        supabase.from('clients').select('id, name').order('name'),
+        supabase.from('projects').select('id, name, client_id').order('name'),
+      ])
+      if (clientsRes.data) setClients(clientsRes.data)
+      if (projectsRes.data) setProjects(projectsRes.data)
+    }
+    loadFilterOptions()
+  }, [])
+
+  // Filtered projects based on selected client
+  const filteredProjects = selectedClient
+    ? projects.filter((p) => (p as FilterOption & { client_id: string }).client_id === selectedClient)
+    : projects
+
   const loadEntries = useCallback(async () => {
     try {
+      setLoading(true)
       const supabase = getSupabase()
 
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('time_entries')
         .select(`
           id, start_time, end_time, duration_seconds, notes, is_running, is_manual,
+          project_id,
           projects!inner(
+            id,
             name,
             hourly_rate_override,
-            clients!inner(name, hourly_rate, color)
+            client_id,
+            clients!inner(id, name, hourly_rate, color)
           )
         `)
         .order('start_time', { ascending: false })
+
+      // Apply date filters
+      if (startDate) {
+        query = query.gte('start_time', new Date(startDate).toISOString())
+      }
+      if (endDate) {
+        // End of the selected end date
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
+        query = query.lte('start_time', end.toISOString())
+      }
+
+      // Apply project filter via project_id
+      if (selectedProject) {
+        query = query.eq('project_id', selectedProject)
+      }
+
+      // Apply client filter via the projects relation
+      if (selectedClient && !selectedProject) {
+        query = query.eq('projects.client_id', selectedClient)
+      }
+
+      const { data, error: fetchError } = await query
 
       if (fetchError) throw fetchError
 
@@ -50,7 +112,9 @@ export default function TimeLogPage() {
         notes: e.notes,
         is_running: e.is_running,
         is_manual: e.is_manual,
+        project_id: e.project_id,
         project_name: e.projects.name,
+        client_id: e.projects.client_id,
         client_name: e.projects.clients.name,
         client_color: e.projects.clients.color,
         effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
@@ -63,11 +127,20 @@ export default function TimeLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedClient, selectedProject, startDate, endDate])
 
   useEffect(() => {
     loadEntries()
   }, [loadEntries])
+
+  const clearFilters = () => {
+    setSelectedClient('')
+    setSelectedProject('')
+    setStartDate('')
+    setEndDate('')
+  }
+
+  const hasFilters = selectedClient || selectedProject || startDate || endDate
 
   // Group entries by date
   const groupedEntries = entries.reduce<Record<string, TimeLogEntry[]>>((groups, entry) => {
@@ -110,20 +183,104 @@ export default function TimeLogPage() {
         <div>
           <h1 className="text-2xl font-bold text-text">Time Log</h1>
           <p className="text-sm text-text-muted">
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'} total
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+            {hasFilters ? ' (filtered)' : ' total'}
           </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 rounded-card border border-border bg-background p-4 shadow-card">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Client filter */}
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
+            <select
+              value={selectedClient}
+              onChange={(e) => {
+                setSelectedClient(e.target.value)
+                setSelectedProject('')
+              }}
+              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Clients</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Project filter */}
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-text-muted">Project</label>
+            <select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Projects</option>
+              {filteredProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Start date */}
+          <div className="min-w-[150px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-text-muted">From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* End date */}
+          <div className="min-w-[150px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-text-muted">To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Clear filters */}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-card border border-border bg-background py-16 shadow-card">
-          <p className="mb-2 text-lg font-semibold text-text">No time entries yet</p>
+          <p className="mb-2 text-lg font-semibold text-text">
+            {hasFilters ? 'No matching entries' : 'No time entries yet'}
+          </p>
           <p className="text-text-muted">
-            Start a timer from the{' '}
-            <a href="/" className="font-medium text-primary hover:text-primary-dark">
-              Dashboard
-            </a>{' '}
-            to begin tracking time.
+            {hasFilters ? (
+              <button
+                onClick={clearFilters}
+                className="font-medium text-primary hover:text-primary-dark"
+              >
+                Clear filters
+              </button>
+            ) : (
+              <>
+                Start a timer from the{' '}
+                <Link href="/" className="font-medium text-primary hover:text-primary-dark">
+                  Dashboard
+                </Link>{' '}
+                to begin tracking time.
+              </>
+            )}
           </p>
         </div>
       ) : (

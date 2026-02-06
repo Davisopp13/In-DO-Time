@@ -122,7 +122,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 
 ### Phase 4: Time Log & Reports (Days 4-6)
 - [x] Time log page: chronological list of all time entries
-- [ ] Filter by client, project, and date range
+- [x] Filter by client, project, and date range
 - [ ] Each entry: project, client, start/end time, duration, calculated cost
 - [ ] Edit entries (adjust start/end times for corrections)
 - [ ] Delete entries with confirmation dialog

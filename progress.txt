@@ -383,3 +383,29 @@
   - Daily totals calculated per group for quick at-a-glance summary
   - Header already had /time-log nav link from iteration 7
 ---
+
+## Iteration 19 - Filter by client, project, and date range
+- What was implemented:
+  - Added filter bar to Time Log page with Client dropdown, Project dropdown, From date, and To date
+  - Client and Project dropdowns populated from Supabase on mount
+  - Project dropdown filters by selected client (shows only relevant projects)
+  - Selecting a client clears project selection to avoid mismatches
+  - Date range uses native HTML date inputs with gte/lte Supabase filters
+  - Filters applied at query level (Supabase) for efficiency, not client-side
+  - "Clear" button appears only when filters are active
+  - Entry count shows "(filtered)" when filters are active
+  - Empty state shows "No matching entries" with clear filters link when filtered
+  - Fixed pre-existing ESLint issue: replaced `<a>` with `<Link>` from next/link
+  - Added project_id and client_id to TimeLogEntry interface for filter support
+- Files changed:
+  - src/app/time-log/page.tsx (updated - added filter UI and query logic)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Supabase .gte() and .lte() work directly on timestamptz columns with ISO strings
+  - For client filtering through a relation: `.eq('projects.client_id', clientId)` with !inner join
+  - Project filter uses direct `.eq('project_id', id)` since it's on the time_entries table
+  - When selecting client, clear project selection to avoid stale filter state
+  - loadEntries depends on filter state via useCallback deps array - auto-refetches on filter change
+  - End date needs setHours(23,59,59,999) to include entries on that day
+  - `next/link` Link component required instead of `<a>` for internal navigation (ESLint rule)
+---
