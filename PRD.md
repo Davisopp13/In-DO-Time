@@ -137,7 +137,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] Loading states and error handling
 - [x] Seed B.B. (GA Gymnastics State Meets) and Mariah (Evermore Equine) as default clients
 - [x] Deploy to Vercel
-- [ ] Test full loop: add client → start timer → stop → view log → export CSV
+- [x] Test full loop: add client → start timer → stop → view log → export CSV
 
 ## Explicitly NOT Building
 - User authentication / multi-user support

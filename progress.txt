@@ -686,3 +686,30 @@
   - Production URL pattern: https://{project-name}.vercel.app
   - Already logged in users can deploy immediately without `vercel login`
 ---
+
+## Iteration 32 - Test full loop: add client → start timer → stop → view log → export CSV
+- What was implemented:
+  - Set up Vitest test framework with jsdom environment
+  - Created vitest.config.ts with path aliases matching tsconfig
+  - Added "test": "vitest run" script to package.json
+  - Created src/__tests__/full-loop.test.ts with 29 tests covering:
+    - Timer utilities: formatDuration, calculateElapsedSeconds, calculateRunningCost, formatCurrency
+    - CSV generation: headers, data rows, manual entries, empty notes, CSV escaping, multiple entries
+    - CSV filename generation: base filename, with client, with dates, with date range, all filters
+    - Full end-to-end flow: add client → add project → start timer → stop timer → view log → export CSV
+    - Multi-client export with different rates
+    - Timer state transitions (running → stopped with correct duration calculation)
+  - All 29 tests pass, typecheck passes, build succeeds
+- Files changed:
+  - vitest.config.ts (new - Vitest configuration)
+  - package.json (updated - added test script, added dev dependencies)
+  - src/__tests__/full-loop.test.ts (new - 29 comprehensive tests)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Vitest v4 works great with Next.js 16 - no special configuration needed beyond path aliases
+  - jsdom environment needed for any DOM-related testing
+  - Pure utility functions (formatDuration, calculateRunningCost, etc.) are easily testable without mocks
+  - CSV generation is fully testable as pure functions - no Supabase dependency
+  - Mock Supabase with vi.doMock for integration tests that need database simulation
+  - Test both the individual utilities AND the complete flow to ensure they work together
+---
