@@ -191,3 +191,42 @@
   - Two stop variants: by timeEntryId (direct) and by projectId (convenience)
   - Pattern: fetch first, validate, then update - prevents race conditions
 ---
+
+## Iteration 10 - Pause/resume functionality (stop current entry, start new one on resume)
+- What was implemented:
+  - Added pauseTimer(projectId) → delegates to stopTimerForProject (stops current entry)
+  - Added resumeTimer(projectId, copyNotes?) → starts new entry, optionally copies notes from last entry
+  - Added getLastEntryForProject(projectId) → gets most recent entry for a project
+  - Added getPausedTimerForProject(projectId) → checks if project has a "paused" state (stopped within 24h)
+  - Added getTimerStateForProject(projectId) → returns 'running' | 'paused' | 'stopped' with entry
+  - Added TimerState type export
+- Files changed:
+  - src/lib/timer.ts (added 5 new functions + 1 type)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Pause is semantically distinct from stop, but uses same underlying mechanism
+  - "Paused" state determined by having a stopped entry within 24 hours
+  - copyNotes=true by default on resume to continue work context
+  - TimerState type enables UI to show different button states per project
+  - Pattern: pause/resume creates separate time entries (not a single paused entry)
+---
+
+## Iteration 11 - Support multiple simultaneous running timers (one per project)
+- What was implemented:
+  - Added validation to startTimer() to prevent multiple running timers per project
+  - startTimer now checks getRunningTimerForProject() before creating new entry
+  - Added RunningTimerWithProject interface for dashboard display
+  - Added getAllRunningTimersWithProjects() - fetches all running timers with nested project + client data
+  - Added getRunningTimerCount() - quick count for dashboard indicators
+  - Uses Supabase nested select: time_entries → projects → clients
+  - Returns effectiveRate (project override or client rate) for each running timer
+- Files changed:
+  - src/lib/timer.ts (added validation to startTimer, added 3 new exports)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Multiple simultaneous timers already worked via getRunningTimers() returning all
+  - Key constraint "one per project" enforced by validation in startTimer and resumeTimer
+  - Supabase nested joins: `projects!inner(..., clients!inner(...))` for multi-level relations
+  - eslint @typescript-eslint/no-explicit-any needed for complex Supabase return types
+  - RunningTimerWithProject provides dashboard-ready structure with effectiveRate pre-calculated
+---

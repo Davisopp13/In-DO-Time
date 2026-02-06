@@ -17,9 +17,19 @@ export interface TimerResult {
 /**
  * Start a new timer for a project
  * Creates a time_entry with is_running=true, start_time=now
+ * Prevents multiple running timers for the same project (one per project max)
  */
 export async function startTimer(projectId: string, notes?: string): Promise<TimerResult> {
   const supabase = getSupabase()
+
+  // Prevent multiple running timers on the same project
+  const existingTimer = await getRunningTimerForProject(projectId)
+  if (existingTimer) {
+    return {
+      success: false,
+      error: 'A timer is already running for this project',
+    }
+  }
 
   const newEntry: TimeEntryInsert = {
     project_id: projectId,
@@ -326,4 +336,113 @@ export function formatCurrency(amount: number): string {
     style: 'currency',
     currency: 'USD',
   }).format(amount)
+}
+
+/**
+ * Running timer with full project and client info
+ * Used for dashboard display of all simultaneous timers
+ */
+export interface RunningTimerWithProject {
+  timeEntry: TimeEntry
+  project: {
+    id: string
+    name: string
+    hourly_rate_override: number | null
+  }
+  client: {
+    id: string
+    name: string
+    hourly_rate: number
+    color: string
+  }
+  effectiveRate: number
+}
+
+/**
+ * Get all running timers with their project and client information
+ * Supports multiple simultaneous timers (one per project)
+ * Returns data needed for dashboard display: timer, project, client, and effective rate
+ */
+export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWithProject[]> {
+  const supabase = getSupabase()
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select(`
+      *,
+      projects!inner(
+        id,
+        name,
+        hourly_rate_override,
+        clients!inner(
+          id,
+          name,
+          hourly_rate,
+          color
+        )
+      )
+    `)
+    .eq('is_running', true)
+    .order('start_time', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching running timers with projects:', error)
+    return []
+  }
+
+  if (!data) return []
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((entry: any) => {
+    const project = entry.projects
+    const client = project.clients
+    const effectiveRate = project.hourly_rate_override ?? client.hourly_rate
+
+    return {
+      timeEntry: {
+        id: entry.id,
+        project_id: entry.project_id,
+        start_time: entry.start_time,
+        end_time: entry.end_time,
+        duration_seconds: entry.duration_seconds,
+        notes: entry.notes,
+        is_manual: entry.is_manual,
+        is_running: entry.is_running,
+        created_at: entry.created_at,
+        updated_at: entry.updated_at,
+      },
+      project: {
+        id: project.id,
+        name: project.name,
+        hourly_rate_override: project.hourly_rate_override,
+      },
+      client: {
+        id: client.id,
+        name: client.name,
+        hourly_rate: client.hourly_rate,
+        color: client.color,
+      },
+      effectiveRate,
+    }
+  })
+}
+
+/**
+ * Count of currently running timers
+ * Quick check for dashboard indicators
+ */
+export async function getRunningTimerCount(): Promise<number> {
+  const supabase = getSupabase()
+
+  const { count, error } = await supabase
+    .from('time_entries')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_running', true)
+
+  if (error) {
+    console.error('Error counting running timers:', error)
+    return 0
+  }
+
+  return count ?? 0
 }
