@@ -272,3 +272,29 @@
   - Hooks directory created at src/hooks/ for custom React hooks
   - Next.js allows mixing server (page.tsx) and client (ActiveTimers) components seamlessly
 ---
+
+## Iteration 14 - Card-based dashboard showing all active projects with timer controls
+- What was implemented:
+  - Created src/components/Dashboard.tsx - full card-based dashboard component
+  - Fetches all active projects with client info from Supabase
+  - Detects running timers and shows live ticking elapsed time + running cost
+  - Detects paused projects (stopped within 24h) and shows "Resume" button
+  - Start/Pause/Stop/Resume buttons per project card with loading states
+  - Green pulsing indicator for running timers, amber dot for paused
+  - Cards styled with client color border, responsive 3-col grid
+  - Running timer count summary bar at top
+  - Empty state with links to Clients/Projects pages
+  - Replaced old placeholder page.tsx with Dashboard component
+  - Removed dependency on standalone ActiveTimers component (Dashboard is now unified)
+- Files changed:
+  - src/components/Dashboard.tsx (new - full dashboard component)
+  - src/app/page.tsx (updated - now renders Dashboard instead of placeholder + ActiveTimers)
+- Learnings for future iterations:
+  - Dashboard replaces ActiveTimers on home page - shows ALL projects, not just running ones
+  - ActiveTimers.tsx still exists and could be reused elsewhere if needed
+  - getPausedTimerForProject makes individual queries per project - may be slow with many projects
+  - Timer map (Map<string, TimerDisplayInfo>) is efficient for lookup by projectId
+  - setInterval with Map state update works for multi-timer ticking
+  - Supabase nested select with !inner ensures only projects with valid clients are returned
+  - eslint @typescript-eslint/no-explicit-any needed for Supabase join return types
+---

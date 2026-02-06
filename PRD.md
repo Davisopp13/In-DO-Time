@@ -111,7 +111,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - [x] On app load, detect any is_running=true entries and resume display
 
 ### Phase 3: Dashboard UI (Days 3-4)
-- [ ] Card-based dashboard showing all active projects with timer controls
+- [x] Card-based dashboard showing all active projects with timer controls
 - [ ] Each card: client name, project name, live elapsed time (ticking), running cost
 - [ ] Start/Stop/Pause buttons per card
 - [ ] Green pulsing indicator for running timers, amber accent for active states
