@@ -37,6 +37,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -66,6 +67,14 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'projects_client_id_fkey'
+            columns: ['client_id']
+            referencedRelation: 'clients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       time_entries: {
         Row: {
@@ -104,6 +113,14 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'time_entries_project_id_fkey'
+            columns: ['project_id']
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
     Views: {
@@ -113,6 +130,9 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }

@@ -104,3 +104,28 @@
   - Brand colors accessible as Tailwind classes like bg-primary, text-primary-dark, etc.
   - Components go in src/components/ directory with @/components/* imports
 ---
+
+## Iteration 6 - Build Client CRUD (add, edit, archive clients with name, hourly rate, color)
+- What was implemented:
+  - Created /clients page with full CRUD functionality
+  - List view shows all active clients in card-based grid layout (3 columns desktop, responsive)
+  - Each card displays: name, hourly rate, color indicator, edit/archive buttons
+  - Add client modal with form: name (required), hourly rate, color picker (8 preset colors)
+  - Edit client functionality reuses same modal
+  - Archive/restore functionality with confirmation dialog
+  - Toggle to show/hide archived clients
+  - Error handling with user-friendly messages
+  - Loading states during data fetch
+- Files changed:
+  - src/app/clients/page.tsx (new - full Client CRUD page)
+  - src/types/database.ts (updated - added Relationships property for Supabase SDK v2 compatibility)
+  - src/lib/supabase.ts (updated - lazy initialization pattern to avoid build-time errors)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Supabase SDK v2 requires Relationships property in each table definition for TypeScript
+  - Supabase client must use lazy initialization to avoid build errors when env vars missing
+  - ESLint rule react-hooks/set-state-in-effect is VERY strict - cannot call setState synchronously in useEffect body
+  - Workaround: call setState only in .then() callbacks or event handlers, not at effect start
+  - Use refreshTrigger pattern to trigger re-fetches: increment counter + add to useEffect deps
+  - Client colors stored as hex strings in database, rendered with inline styles
+---
