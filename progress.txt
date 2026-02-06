@@ -59,3 +59,24 @@
   - Migration is meant to be run in Supabase SQL Editor (not automated CLI)
   - Build and lint pass - project remains in healthy state
 ---
+
+## Iteration 4 - Place DO Code Lab logo in public/ and generate favicon
+- What was implemented:
+  - Logo already existed at public/DO_CODE_LAB_LOGO_NO_TEXT.png (from iteration 1)
+  - Generated 32x32 icon.png from logo using macOS sips
+  - Generated 180x180 apple-icon.png for Apple touch devices
+  - Removed default favicon.ico
+  - Updated layout.tsx metadata title to "In DO Time"
+  - Updated layout.tsx metadata description to "Multi-client time tracking for DO Code Lab"
+- Files changed:
+  - src/app/icon.png (new - generated from logo)
+  - src/app/apple-icon.png (new - generated from logo)
+  - src/app/favicon.ico (deleted)
+  - src/app/layout.tsx (updated metadata)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Next.js App Router auto-detects icon.png and apple-icon.png in app/ directory
+  - macOS sips is available for image conversion when ImageMagick isn't installed
+  - Build output shows /icon.png and /apple-icon.png as static routes when properly placed
+  - Favicon should be in app/ dir not public/ for App Router convention
+---
