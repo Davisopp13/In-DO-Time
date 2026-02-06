@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
-import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry } from '@/lib/timer'
+import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry, deleteTimeEntry } from '@/lib/timer'
 
 interface TimeLogEntry {
   id: string
@@ -46,6 +46,10 @@ export default function TimeLogPage() {
   const [editNotes, setEditNotes] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+
+  // Delete state
+  const [deletingEntry, setDeletingEntry] = useState<TimeLogEntry | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Load clients and projects for filter dropdowns
   useEffect(() => {
@@ -197,6 +201,17 @@ export default function TimeLogPage() {
 
     closeEditModal()
     loadEntries()
+  }
+
+  const handleDelete = async () => {
+    if (!deletingEntry) return
+    setDeleteLoading(true)
+    const result = await deleteTimeEntry(deletingEntry.id)
+    setDeleteLoading(false)
+    if (result.success) {
+      setDeletingEntry(null)
+      loadEntries()
+    }
   }
 
   const hasFilters = selectedClient || selectedProject || startDate || endDate
@@ -423,17 +438,28 @@ export default function TimeLogPage() {
                           </p>
                         </div>
 
-                        {/* Edit button */}
+                        {/* Edit + Delete buttons */}
                         {!entry.is_running && (
-                          <button
-                            onClick={() => openEditModal(entry)}
-                            className="flex-shrink-0 rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
-                            title="Edit entry"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                            </svg>
-                          </button>
+                          <div className="flex flex-shrink-0 gap-1">
+                            <button
+                              onClick={() => openEditModal(entry)}
+                              className="rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
+                              title="Edit entry"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeletingEntry(entry)}
+                              className="rounded-button p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600"
+                              title="Delete entry"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
                         )}
 
                         {/* Duration + Cost */}
@@ -452,6 +478,40 @@ export default function TimeLogPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-card border border-border bg-background p-6 shadow-lg">
+            <h2 className="mb-2 text-lg font-semibold text-text">Delete Entry?</h2>
+            <p className="mb-1 text-sm text-text-muted">
+              This will permanently delete the time entry for:
+            </p>
+            <p className="mb-4 text-sm font-medium text-text">
+              {deletingEntry.project_name} — {deletingEntry.client_name}
+              <br />
+              <span className="font-normal text-text-muted">
+                {new Date(deletingEntry.start_time).toLocaleDateString()} · {formatDuration(deletingEntry.duration_seconds ?? 0)} · {formatCurrency(calculateRunningCost(deletingEntry.duration_seconds ?? 0, deletingEntry.effectiveRate))}
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeletingEntry(null)}
+                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="rounded-button bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -445,3 +445,22 @@
   - updateTimeEntry smartly recalculates duration when either time changes
   - Modal uses fixed inset-0 z-50 with black/50 backdrop for overlay pattern
 ---
+
+## Iteration 22 - Delete entries with confirmation dialog
+- What was implemented:
+  - Added deleteTimeEntry() function to src/lib/timer.ts
+  - Prevents deleting running timers (must stop first)
+  - Added trash icon delete button next to edit button on each completed entry row
+  - Confirmation dialog shows entry details (project, client, date, duration, cost) before deleting
+  - Loading state on delete button, list refreshes after successful delete
+- Files changed:
+  - src/lib/timer.ts (added deleteTimeEntry function)
+  - src/app/time-log/page.tsx (added delete state, handler, button, confirmation dialog)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Delete button and edit button now wrapped in a flex container with gap-1 for consistent spacing
+  - Confirmation dialog uses red color scheme (bg-red-600) to indicate destructive action
+  - Delete blocked for running entries same as edit - consistent UX pattern
+  - Supabase .delete().eq('id', id) returns no data by default, just error on failure
+  - Reused same modal overlay pattern: fixed inset-0 z-50 bg-black/50
+---

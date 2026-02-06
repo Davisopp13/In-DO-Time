@@ -481,6 +481,40 @@ export async function updateTimeEntry(
 }
 
 /**
+ * Delete a time entry
+ * Prevents deleting running timers (stop them first)
+ */
+export async function deleteTimeEntry(timeEntryId: string): Promise<TimerResult> {
+  const supabase = getSupabase()
+
+  // Fetch entry to check if it's running
+  const { data: entry, error: fetchError } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('id', timeEntryId)
+    .single()
+
+  if (fetchError || !entry) {
+    return { success: false, error: fetchError?.message || 'Entry not found' }
+  }
+
+  if (entry.is_running) {
+    return { success: false, error: 'Cannot delete a running timer. Stop it first.' }
+  }
+
+  const { error } = await supabase
+    .from('time_entries')
+    .delete()
+    .eq('id', timeEntryId)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+/**
  * Count of currently running timers
  * Quick check for dashboard indicators
  */
