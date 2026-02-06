@@ -104,7 +104,7 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 
 ### Phase 2: Timer Engine (Days 2-3)
 - [x] Create timer engine: start timer → creates time_entry with is_running=true
-- [ ] Stop timer → sets end_time, calculates duration_seconds, sets is_running=false
+- [x] Stop timer → sets end_time, calculates duration_seconds, sets is_running=false
 - [ ] Pause/resume functionality (stop current entry, start new one on resume)
 - [ ] Support multiple simultaneous running timers (one per project)
 - [ ] Timer state persists in Supabase (survives browser close/refresh)

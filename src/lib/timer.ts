@@ -103,6 +103,79 @@ export async function hasRunningTimer(projectId: string): Promise<boolean> {
 }
 
 /**
+ * Stop a running timer
+ * Sets end_time to now, calculates duration_seconds, sets is_running=false
+ */
+export async function stopTimer(timeEntryId: string): Promise<TimerResult> {
+  const supabase = getSupabase()
+
+  // First, get the current time entry to access start_time
+  const { data: currentEntry, error: fetchError } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('id', timeEntryId)
+    .single()
+
+  if (fetchError || !currentEntry) {
+    return {
+      success: false,
+      error: fetchError?.message || 'Time entry not found',
+    }
+  }
+
+  if (!currentEntry.is_running) {
+    return {
+      success: false,
+      error: 'Timer is not running',
+    }
+  }
+
+  // Calculate duration and set end time
+  const endTime = new Date()
+  const durationSeconds = calculateElapsedSeconds(currentEntry.start_time)
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .update({
+      end_time: endTime.toISOString(),
+      duration_seconds: durationSeconds,
+      is_running: false,
+    })
+    .eq('id', timeEntryId)
+    .select()
+    .single()
+
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+
+  return {
+    success: true,
+    timeEntry: data,
+  }
+}
+
+/**
+ * Stop timer by project ID
+ * Convenience function that finds and stops the running timer for a project
+ */
+export async function stopTimerForProject(projectId: string): Promise<TimerResult> {
+  const runningTimer = await getRunningTimerForProject(projectId)
+
+  if (!runningTimer) {
+    return {
+      success: false,
+      error: 'No running timer found for this project',
+    }
+  }
+
+  return stopTimer(runningTimer.id)
+}
+
+/**
  * Calculate elapsed seconds for a running timer
  */
 export function calculateElapsedSeconds(startTime: string): number {

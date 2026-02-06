@@ -173,3 +173,21 @@
   - formatDuration returns HH:MM:SS format, padded with zeros
   - Timer state persists in Supabase - can survive browser refresh
 ---
+
+## Iteration 9 - Stop timer → sets end_time, calculates duration_seconds, sets is_running=false
+- What was implemented:
+  - Added stopTimer(timeEntryId) function to timer engine
+  - Fetches current entry to verify it exists and is_running=true
+  - Calculates duration_seconds using existing calculateElapsedSeconds helper
+  - Updates entry with end_time (ISO string), duration_seconds, is_running=false
+  - Added convenience function stopTimerForProject(projectId) that finds and stops the running timer
+  - Both functions return TimerResult with success/error states
+- Files changed:
+  - src/lib/timer.ts (added stopTimer and stopTimerForProject functions)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - Stop timer must first fetch entry to get start_time for duration calculation
+  - Validation checks: entry must exist AND is_running must be true
+  - Two stop variants: by timeEntryId (direct) and by projectId (convenience)
+  - Pattern: fetch first, validate, then update - prevents race conditions
+---
