@@ -80,3 +80,27 @@
   - Build output shows /icon.png and /apple-icon.png as static routes when properly placed
   - Favicon should be in app/ dir not public/ for App Router convention
 ---
+
+## Iteration 5 - Create app layout with branded header (logo + "In DO Time" + nav)
+- What was implemented:
+  - Updated globals.css with DO Code Lab brand colors using TailwindCSS v4 @theme inline
+  - Configured all brand colors: primary, primary-dark, primary-light, surface, accent, text, border, etc.
+  - Added design tokens for border radius (button: 8px, card: 12px) and card shadows
+  - Created Header component with DO Code Lab logo (40px), "In DO Time" title, and nav links
+  - Navigation includes: Dashboard, Time Log, Reports, Clients with active state styling
+  - Updated layout.tsx to use Playfair Display (headings) and Inter (body) fonts from Google Fonts
+  - Layout includes Header component and main content area with max-w-7xl container
+  - Updated page.tsx with simple placeholder using brand styling
+- Files changed:
+  - src/app/globals.css (updated with brand colors and design tokens)
+  - src/components/Header.tsx (new)
+  - src/app/layout.tsx (updated with fonts and Header)
+  - src/app/page.tsx (updated with placeholder content)
+  - PRD.md (marked task complete)
+- Learnings for future iterations:
+  - TailwindCSS v4 uses @theme inline block for custom CSS variables
+  - Font variables are set via next/font/google and consumed in CSS via var(--font-name)
+  - Header uses 'use client' for usePathname hook to highlight active nav item
+  - Brand colors accessible as Tailwind classes like bg-primary, text-primary-dark, etc.
+  - Components go in src/components/ directory with @/components/* imports
+---
