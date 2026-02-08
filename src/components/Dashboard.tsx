@@ -405,20 +405,22 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center py-6">
-        <CircularProgress value={totalSeconds} max={28800} size={240}>
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-2">Today</span>
-            <div className="text-5xl font-bold tracking-tight text-text dark:text-white mb-1">
-              {hours}<span className="text-2xl text-text-muted mx-1">h</span>
-              {mins}<span className="text-2xl text-text-muted">m</span>
+        <div className="transform scale-75 sm:scale-100 transition-transform duration-300">
+          <CircularProgress value={totalSeconds} max={28800} size={240}>
+            <div className="flex flex-col items-center">
+              <span className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-2">Today</span>
+              <div className="text-5xl font-bold tracking-tight text-text dark:text-white mb-1">
+                {hours}<span className="text-2xl text-text-muted mx-1">h</span>
+                {mins}<span className="text-2xl text-text-muted">m</span>
+              </div>
+              <div className="text-lg font-medium text-accent">
+                {formatCurrency(totalEarnings)}
+              </div>
             </div>
-            <div className="text-lg font-medium text-accent">
-              {formatCurrency(totalEarnings)}
-            </div>
-          </div>
-        </CircularProgress>
+          </CircularProgress>
+        </div>
 
-        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted/80 glass-panel px-4 py-2 rounded-full">
+        <div className="mt-4 flex items-center gap-2 text-xs sm:text-sm text-text-muted/80 glass-panel px-4 py-2 rounded-full">
           {runningCount > 0 ? (
             <>
               <span className="relative flex h-2.5 w-2.5">

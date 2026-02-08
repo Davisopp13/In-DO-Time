@@ -322,8 +322,8 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <div className="mb-6 glass-card border border-border p-4 shadow-card">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
-          <div className="col-span-2 sm:col-span-1">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="col-span-1 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
             <select
               value={selectedClient}
@@ -358,10 +358,10 @@ export default function ReportsPage() {
           </div>
 
           {hasFilters && (
-            <div className="col-span-2 flex items-end sm:col-span-3 lg:col-span-1">
+            <div className="col-span-1 flex items-end sm:col-span-3 lg:col-span-1">
               <button
                 onClick={clearFilters}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
+                className="w-full sm:w-auto rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white border border-transparent hover:border-border transition-colors"
               >
                 Clear
               </button>
@@ -468,7 +468,7 @@ export default function ReportsPage() {
                     {client.projects.map((project) => (
                       <div
                         key={project.id}
-                        className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-8 sm:pl-12 hover:bg-surface-foreground/[0.02] dark:hover:bg-white/[0.02]"
+                        className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-6 sm:pl-12 hover:bg-surface-foreground/[0.02] dark:hover:bg-white/[0.02]"
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-text dark:text-white truncate">{project.name}</p>

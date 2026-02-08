@@ -327,9 +327,9 @@ export default function TimeLogPage() {
 
       {/* Filters */}
       <div className="mb-6 glass-card p-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           {/* Client filter */}
-          <div className="col-span-2 sm:col-span-1">
+          <div className="col-span-1 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
             <select
               value={selectedClient}
@@ -347,7 +347,7 @@ export default function TimeLogPage() {
           </div>
 
           {/* Project filter */}
-          <div className="col-span-2 sm:col-span-1">
+          <div className="col-span-1 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Project</label>
             <select
               value={selectedProject}
@@ -385,10 +385,10 @@ export default function TimeLogPage() {
 
           {/* Clear filters */}
           {hasFilters && (
-            <div className="col-span-2 flex items-end sm:col-span-4 lg:col-span-1">
+            <div className="col-span-1 flex items-end sm:col-span-2 lg:col-span-1">
               <button
                 onClick={clearFilters}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
+                className="w-full sm:w-auto rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white border border-transparent hover:border-border transition-colors"
               >
                 Clear
               </button>
@@ -463,10 +463,10 @@ export default function TimeLogPage() {
                     return (
                       <div
                         key={entry.id}
-                        className={`px-6 py-4 border-b border-border last:border-0 transition-colors hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]' /* Zebra Striping */
+                        className={`px-4 sm:px-6 py-4 border-b border-border last:border-0 transition-colors hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]' /* Zebra Striping */
                           }`}
                       >
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-start gap-3 sm:gap-4">
                           {/* Client color indicator */}
                           <span
                             className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full"
@@ -530,7 +530,7 @@ export default function TimeLogPage() {
                             )}
 
                             {/* Duration + Cost */}
-                            <div className="text-right min-w-[80px]">
+                            <div className="text-right min-w-[70px] sm:min-w-[80px]">
                               <p className="font-mono text-sm font-medium text-text dark:text-white">
                                 {entry.is_running ? '—' : formatDuration(duration)}
                               </p>
@@ -545,13 +545,13 @@ export default function TimeLogPage() {
                           <div className="sm:hidden mt-3 ml-6 flex gap-3">
                             <button
                               onClick={() => openEditModal(entry)}
-                              className="text-xs font-medium text-text-muted hover:text-text dark:hover:text-white"
+                              className="px-3 py-1.5 rounded-full bg-surface-foreground/5 dark:bg-white/5 border border-border text-xs font-medium text-text-muted hover:text-text dark:hover:text-white transition-colors"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => setDeletingEntry(entry)}
-                              className="text-xs font-medium text-red-400 hover:text-red-300"
+                              className="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
                             >
                               Delete
                             </button>

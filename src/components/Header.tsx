@@ -24,7 +24,7 @@ export default function Header() {
       <header className="sticky top-6 z-50 mx-auto max-w-7xl px-4 mb-8 flex items-center justify-between">
         {/* Logo - Independent Floating Element */}
         <Link href="/" className="relative flex items-center h-auto w-auto shrink-0 transition-transform hover:scale-105 duration-200">
-          <div className="relative h-40 w-auto aspect-[3/2]">
+          <div className="relative h-24 md:h-40 w-auto aspect-[3/2]">
             <Image
               src="/In_DO_Time_Logo.png"
               alt="In DO Time Logo"
@@ -79,29 +79,33 @@ export default function Header() {
           </button>
         </div>
 
+        {/* Mobile Navigation Overlay */}
+        <div className={`fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] md:hidden transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)} />
+
         {/* Mobile Navigation Dropdown */}
-        {mobileMenuOpen && (
-          <div className="absolute top-20 right-4 left-4 z-50">
-            <nav className="glass-panel rounded-3xl p-2 flex flex-col gap-1 animate-in fade-in slide-in-from-top-4 duration-200 shadow-2xl bg-surface/95 backdrop-blur-xl border border-border">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`block rounded-xl px-4 py-3 text-base font-medium transition-colors ${isActive
-                      ? 'bg-accent/10 text-text dark:text-white border border-accent/20'
-                      : 'text-text-muted hover:bg-surface/30 hover:text-text dark:hover:text-white'
-                      }`}
-                  >
+        <div className={`absolute top-full right-0 mt-2 w-full max-w-sm transform transition-all duration-300 origin-top-right md:hidden ${mobileMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
+          <nav className="glass-panel mx-4 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl bg-surface/95 backdrop-blur-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/5">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block rounded-xl px-4 py-3 text-base font-medium transition-all duration-200 ${isActive
+                    ? 'bg-accent/10 text-text dark:text-white border border-accent/20 shadow-sm'
+                    : 'text-text-muted hover:bg-surface/50 hover:text-text dark:hover:text-white'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
                     {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        )}
+                    {isActive && <div className="h-1.5 w-1.5 rounded-full bg-accent" />}
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </header>
     </>
   );

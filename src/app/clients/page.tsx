@@ -231,7 +231,7 @@ export default function ClientsPage() {
           {showArchived ? 'Try disabling the archived filter.' : 'Add your first client to get started!'}
         </EmptyState>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clients.map((client) => (
             <div
               key={client.id}
