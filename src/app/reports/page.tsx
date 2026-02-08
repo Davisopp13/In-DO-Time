@@ -81,7 +81,7 @@ export default function ReportsPage() {
             name,
             hourly_rate_override,
             client_id,
-            clients!inner(id, name, hourly_rate, color)
+            clients(id, name, hourly_rate, color)
           )
         `)
         .eq('is_running', false)
@@ -105,21 +105,24 @@ export default function ReportsPage() {
       if (fetchError) throw fetchError
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entries: ReportEntry[] = (data || []).map((e: any) => ({
-        id: e.id,
-        start_time: e.start_time,
-        end_time: e.end_time,
-        duration_seconds: e.duration_seconds,
-        is_running: e.is_running,
-        is_manual: e.is_manual,
-        notes: e.notes,
-        project_id: e.project_id,
-        project_name: e.projects.name,
-        client_id: e.projects.client_id,
-        client_name: e.projects.clients.name,
-        client_color: e.projects.clients.color,
-        effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
-      }))
+      const entries: ReportEntry[] = (data || []).map((e: any) => {
+        const client = e.projects.clients || { name: 'Unknown', hourly_rate: 0, color: '#000000' }
+        return {
+          id: e.id,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          duration_seconds: e.duration_seconds,
+          is_running: e.is_running,
+          is_manual: e.is_manual,
+          notes: e.notes,
+          project_id: e.project_id,
+          project_name: e.projects.name,
+          client_id: e.projects.client_id,
+          client_name: client.name,
+          client_color: client.color,
+          effectiveRate: e.projects.hourly_rate_override ?? client.hourly_rate,
+        }
+      })
 
       // Store entries for CSV export
       setReportEntries(entries)
@@ -228,41 +231,41 @@ export default function ReportsPage() {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="flex items-center gap-3 mb-6">
-          <div className="h-12 w-12 rounded bg-gray-200" />
+          <div className="h-12 w-12 rounded bg-surface/20 dark:bg-white/10" />
           <div className="space-y-2">
-            <div className="h-6 w-24 rounded bg-gray-200" />
-            <div className="h-3 w-40 rounded bg-gray-200" />
+            <div className="h-6 w-24 rounded bg-surface/20 dark:bg-white/10" />
+            <div className="h-3 w-40 rounded bg-surface/20 dark:bg-white/10" />
           </div>
         </div>
-        <div className="rounded-card border border-border bg-background p-4 shadow-card">
+        <div className="glass-card border border-border bg-surface/50 p-4 shadow-card">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="h-10 rounded bg-gray-200 col-span-2 sm:col-span-1" />
-            <div className="h-10 rounded bg-gray-200" />
-            <div className="h-10 rounded bg-gray-200" />
+            <div className="h-10 rounded bg-surface/20 dark:bg-white/10 col-span-2 sm:col-span-1" />
+            <div className="h-10 rounded bg-surface/20 dark:bg-white/10" />
+            <div className="h-10 rounded bg-surface/20 dark:bg-white/10" />
           </div>
         </div>
-        <div className="rounded-card border border-primary bg-primary-light p-4 shadow-card">
+        <div className="glass-card border border-accent/20 bg-accent/5 p-4 shadow-card">
           <div className="flex justify-between">
-            <div className="h-4 w-20 rounded bg-gray-200" />
+            <div className="h-4 w-20 rounded bg-surface/20 dark:bg-white/10" />
             <div className="flex gap-6">
-              <div className="h-6 w-20 rounded bg-gray-200" />
-              <div className="h-6 w-20 rounded bg-gray-200" />
+              <div className="h-6 w-20 rounded bg-surface/20 dark:bg-white/10" />
+              <div className="h-6 w-20 rounded bg-surface/20 dark:bg-white/10" />
             </div>
           </div>
         </div>
         {[1, 2].map((i) => (
-          <div key={i} className="rounded-card border border-border bg-background p-5 shadow-card">
+          <div key={i} className="glass-card border border-border bg-surface/50 p-5 shadow-card">
             <div className="flex justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-4 w-4 rounded-full bg-gray-200" />
+                <div className="h-4 w-4 rounded-full bg-surface/20 dark:bg-white/10" />
                 <div className="space-y-1">
-                  <div className="h-4 w-28 rounded bg-gray-200" />
-                  <div className="h-3 w-20 rounded bg-gray-200" />
+                  <div className="h-4 w-28 rounded bg-surface/20 dark:bg-white/10" />
+                  <div className="h-3 w-20 rounded bg-surface/20 dark:bg-white/10" />
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="h-4 w-16 rounded bg-gray-200" />
-                <div className="h-4 w-16 rounded bg-gray-200" />
+                <div className="h-4 w-16 rounded bg-surface/20 dark:bg-white/10" />
+                <div className="h-4 w-16 rounded bg-surface/20 dark:bg-white/10" />
               </div>
             </div>
           </div>
@@ -273,11 +276,11 @@ export default function ReportsPage() {
 
   if (error) {
     return (
-      <div className="rounded-card border border-red-200 bg-red-50 p-6">
-        <p className="text-red-600">Failed to load report: {error}</p>
+      <div className="glass-card border border-red-500/20 bg-red-500/10 p-6">
+        <p className="text-red-500">Failed to load report: {error}</p>
         <button
           onClick={loadReport}
-          className="mt-2 text-sm font-medium text-primary hover:text-primary-dark"
+          className="mt-2 text-sm font-medium text-text dark:text-white hover:text-accent underline"
         >
           Retry
         </button>
@@ -290,14 +293,14 @@ export default function ReportsPage() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <Image
-            src="/DO_CODE_LAB_LOGO_NO_TEXT.png"
+            src="/DO_CODE_LAB_LOGO.png"
             alt="DO Code Lab"
-            width={48}
+            width={72}
             height={48}
             className="flex-shrink-0"
           />
           <div>
-            <h1 className="text-2xl font-bold text-text">Reports</h1>
+            <h1 className="text-2xl font-bold text-text dark:text-white">Reports</h1>
             <p className="text-sm text-text-muted">
               Summary by client and project
               {hasFilters ? ' (filtered)' : ''}
@@ -307,7 +310,7 @@ export default function ReportsPage() {
         {reportEntries.length > 0 && (
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors self-start"
+            className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors self-start"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -318,18 +321,18 @@ export default function ReportsPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 rounded-card border border-border bg-background p-4 shadow-card">
+      <div className="mb-6 glass-card border border-border p-4 shadow-card">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <div className="col-span-2 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
             <select
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
-              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">All Clients</option>
+              <option value="" className="bg-surface dark:bg-slate-900">All Clients</option>
               {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id} className="bg-surface dark:bg-slate-900">{c.name}</option>
               ))}
             </select>
           </div>
@@ -358,7 +361,7 @@ export default function ReportsPage() {
             <div className="col-span-2 flex items-end sm:col-span-3 lg:col-span-1">
               <button
                 onClick={clearFilters}
-                className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
               >
                 Clear
               </button>
@@ -369,23 +372,23 @@ export default function ReportsPage() {
 
       {/* Grand Totals */}
       {clientSummaries.length > 0 && (
-        <div className="mb-6 rounded-card border border-primary bg-primary-light p-4 shadow-card">
+        <div className="mb-6 glass-card border-l-4 border-accent p-6 shadow-card bg-surface/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-primary-dark">Total</p>
+              <p className="text-sm font-bold uppercase tracking-wide text-text dark:text-white">Total</p>
               <p className="text-xs text-text-muted">
                 {grandTotalEntries} {grandTotalEntries === 1 ? 'entry' : 'entries'} across {clientSummaries.length} {clientSummaries.length === 1 ? 'client' : 'clients'}
               </p>
             </div>
             <div className="flex items-center gap-6">
               <div className="sm:text-right">
-                <p className="font-mono text-lg font-semibold text-primary-dark">
+                <p className="font-mono text-lg font-bold text-accent">
                   {formatDuration(grandTotalSeconds)}
                 </p>
                 <p className="text-xs text-text-muted">Total Time</p>
               </div>
               <div className="sm:text-right">
-                <p className="font-mono text-lg font-semibold text-primary-dark">
+                <p className="font-mono text-lg font-bold text-accent">
                   {formatCurrency(grandTotalCost)}
                 </p>
                 <p className="text-xs text-text-muted">Total Earned</p>
@@ -401,7 +404,7 @@ export default function ReportsPage() {
           {hasFilters ? (
             <button
               onClick={clearFilters}
-              className="font-medium text-primary hover:text-primary-dark"
+              className="font-medium text-accent hover:text-accent/80"
             >
               Clear filters
             </button>
@@ -414,12 +417,12 @@ export default function ReportsPage() {
           {clientSummaries.map((client) => (
             <div
               key={client.id}
-              className="overflow-hidden rounded-card border border-border bg-background shadow-card"
+              className="overflow-hidden glass-card shadow-card"
             >
               {/* Client Header */}
               <button
                 onClick={() => toggleCollapse(client.id)}
-                className="flex w-full items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-4 text-left hover:bg-surface transition-colors"
+                className="flex w-full items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-4 text-left hover:bg-surface-foreground/5 dark:hover:bg-white/5 transition-colors"
               >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <span
@@ -427,7 +430,7 @@ export default function ReportsPage() {
                     style={{ backgroundColor: client.color }}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm sm:text-base font-semibold text-text truncate">{client.name}</p>
+                    <p className="text-sm sm:text-base font-bold text-text dark:text-white truncate">{client.name}</p>
                     <p className="text-xs text-text-muted">
                       {client.entryCount} {client.entryCount === 1 ? 'entry' : 'entries'} · {client.projects.length} {client.projects.length === 1 ? 'project' : 'projects'}
                     </p>
@@ -435,13 +438,13 @@ export default function ReportsPage() {
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                   <div className="text-right">
-                    <p className="font-mono text-xs sm:text-sm font-semibold text-text">
+                    <p className="font-mono text-xs sm:text-sm font-medium text-text dark:text-white">
                       {formatDuration(client.totalSeconds)}
                     </p>
                     <p className="hidden sm:block text-xs text-text-muted">Time</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-xs sm:text-sm font-semibold text-text">
+                    <p className="font-mono text-xs sm:text-sm font-medium text-text dark:text-white">
                       {formatCurrency(client.totalCost)}
                     </p>
                     <p className="hidden sm:block text-xs text-text-muted">Earned</p>
@@ -465,22 +468,22 @@ export default function ReportsPage() {
                     {client.projects.map((project) => (
                       <div
                         key={project.id}
-                        className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-8 sm:pl-12"
+                        className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-8 sm:pl-12 hover:bg-surface-foreground/[0.02] dark:hover:bg-white/[0.02]"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-text truncate">{project.name}</p>
+                          <p className="text-sm font-medium text-text dark:text-white truncate">{project.name}</p>
                           <p className="text-xs text-text-muted">
                             {project.entryCount} {project.entryCount === 1 ? 'entry' : 'entries'}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                           <div className="text-right">
-                            <p className="font-mono text-xs sm:text-sm text-text">
+                            <p className="font-mono text-xs sm:text-sm text-text dark:text-white">
                               {formatDuration(project.totalSeconds)}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-mono text-xs sm:text-sm text-text">
+                            <p className="font-mono text-xs sm:text-sm text-text dark:text-white">
                               {formatCurrency(project.totalCost)}
                             </p>
                           </div>

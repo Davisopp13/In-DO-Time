@@ -1,35 +1,160 @@
 @import "tailwindcss";
 
-/* DO Code Lab Brand Colors & Design Tokens */
+@plugin "tailwindcss-animate";
+
 @theme inline {
-  /* Brand Colors */
-  --color-primary: #3A7D44;
-  --color-primary-dark: #1B5E20;
-  --color-primary-light: #E8F5E9;
-  --color-surface: #F1F8F2;
-  --color-accent: #D97706;
-  --color-accent-light: #F59E0B;
-  --color-text: #1F2937;
-  --color-text-muted: #6B7280;
-  --color-border: #E5E7EB;
-  --color-background: #FFFFFF;
+  /* Brand Colors - Reference CSS Variables */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-background: var(--background);
+  --color-ring: var(--ring);
 
   /* Fonts */
-  --font-heading: var(--font-playfair);
+  --font-heading: var(--font-inter);
   --font-body: var(--font-inter);
 
   /* Design Tokens */
-  --radius-button: 8px;
-  --radius-card: 12px;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --radius-button: 9999px;
+  /* Pill shape */
+  --radius-card: 1.5rem;
+  /* rounded-3xl */
+  --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
 }
 
-body {
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-body), system-ui, sans-serif;
+/* Base Variables - Light Mode Default */
+:root {
+  /* Fern Green Brand - Light Mode */
+  --primary: #65A30D;
+  /* Slightly darker for contrast on light */
+  --primary-foreground: #FFFFFF;
+
+  --surface: #FFFFFF;
+  --surface-foreground: #0F172A;
+
+  --accent: #84CC16;
+  --accent-foreground: #0F172A;
+
+  --text: #0F172A;
+  --text-muted: #64748B;
+
+  --border: #E2E8F0;
+  --background: #F8FAFC;
+  --ring: #84CC16;
+
+  /* Background variables */
+  --bg-image: url('/mountain-light-bg.jpg');
+  --bg-overlay-top: rgba(248, 250, 252, 0.4);
+  --bg-overlay-bottom: rgba(248, 250, 252, 0.9);
+
+  /* Font variables are set by Next.js font loader */
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading), Georgia, serif;
+/* Dark Mode Overrides */
+.dark {
+  /* Fern Green Brand - Dark Mode (Original) */
+  --primary: #84CC16;
+  --primary-foreground: #0F172A;
+
+  --surface: rgba(30, 41, 59, 0.4);
+  --surface-foreground: #F3F4F6;
+
+  --accent: #84CC16;
+  --accent-foreground: #0F172A;
+
+  --text: #F3F4F6;
+  --text-muted: #94A3B8;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --background: #0F172A;
+  --ring: #84CC16;
+
+  /* Background variables */
+  --bg-image: url('/mountain-bg.jpg');
+  --bg-overlay-top: rgba(15, 23, 42, 0.85);
+  --bg-overlay-bottom: rgba(15, 23, 42, 0.95);
+}
+
+@layer base {
+  body {
+    background-color: transparent;
+    color: var(--text);
+    font-family: var(--font-body), system-ui, sans-serif;
+    min-height: 100vh;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Fixed Mountain Background with Overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background:
+      linear-gradient(to bottom, var(--bg-overlay-top), var(--bg-overlay-bottom)),
+      var(--bg-image) center center / cover no-repeat;
+    z-index: -50;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading), sans-serif;
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer utilities {
+
+  /* Glassmorphism Utilities */
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-black/5;
+  }
+
+  .dark .glass {
+    @apply bg-slate-800/30 border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-surface/50 backdrop-blur-xl border border-border rounded-3xl transition-all duration-300;
+  }
+
+  .dark .glass-card {
+    @apply bg-surface/20 border-border shadow-xl;
+  }
+
+  .glass-panel {
+    @apply bg-surface/40 backdrop-blur-lg border border-border rounded-2xl;
+  }
+
+  .dark .glass-panel {
+    @apply bg-surface/10 border-border;
+  }
+
+  .glass-nav {
+    @apply bg-surface/80 backdrop-blur-xl border-b border-border;
+  }
+
+  .dark .glass-nav {
+    @apply border-b border-white/10 shadow-lg;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  }
 }

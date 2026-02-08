@@ -713,3 +713,77 @@
   - Mock Supabase with vi.doMock for integration tests that need database simulation
   - Test both the individual utilities AND the complete flow to ensure they work together
 ---
+
+## Iteration 33 - Update logo assets and references
+- What was implemented:
+  - Switched from missing DO_CODE_LAB_LOGO_NO_TEXT.png to existing DO_CODE_LAB_LOGO.png
+  - Updated Image component dimensions to match new logo's 3:2 aspect ratio (avoid distortion)
+  - Regenerated icon.png and apple-icon.png using center-crop of new high-res logo
+  - Updated PRD.md to reflect correct logo filename
+- Files changed:
+  - src/components/Header.tsx
+  - src/components/EmptyState.tsx
+  - src/app/reports/page.tsx
+  - src/app/icon.png
+  - src/app/apple-icon.png
+  - PRD.md
+- Learnings for future iterations:
+  - Always check image aspect ratios when replacing assets to prevent distortion
+  - sips is excellent for scripted image manipulation (crop/resize)
+  - Next.js Image component enforces aspect ratio via width/height props
+---
+
+## Project Completion verification
+- What was implemented:
+  - Verified all technical Success Criteria in PRD
+  - Ran full regression test suite (29 tests passed)
+  - Updated PRD.md to mark 8/9 success criteria as complete
+  - Remaining criteria is user-acceptance testing (1 week of usage)
+- Files changed:
+  - PRD.md
+- Learnings for future iterations:
+  - The project has met all functional requirements
+  - Ready for active use
+---
+
+## Iteration 34 - Update Navbar Logo
+- What was implemented:
+  - Replaced the navbar logo + text combination with the single "In DO Time Logo" image
+  - Used newly uploaded `public/In_DO_Time_Logo.png`
+  - Removed the text "In DO Time" from the header as it is likely included in the new logo
+- Files changed:
+  - src/components/Header.tsx
+- Learnings for future iterations:
+  - When users provide a specific logo file (In_DO_Time_Logo.png), checks its dimensions and assume it replaces both icon and brand text if requested.
+---
+
+## Iteration 35 - Triple Logo Size
+- What was implemented:
+  - Tripled the logo size in the header from 60x40 to 180x120
+  - Increased header container height from h-16 (64px) to h-36 (144px) to accommodate the larger logo
+- Files changed:
+  - src/components/Header.tsx
+---
+
+## Iteration 35b - Fix Logo Height Class
+- What was implemented:
+  - Corrected  (invalid Tailwind class) to  in Header.tsx
+- Files changed:
+  - src/components/Header.tsx
+---
+
+## Iteration 36 - 2x Logo Size & Tight Navbar
+- What was implemented:
+  - Resized logo to 120x80px (2x original baseline)
+  - Tightened navbar height to h-24 (96px) for a more compact but prominent look
+- Files changed:
+  - src/components/Header.tsx
+---
+
+## Iteration 37 - Maximized Logo in Navbar
+- What was implemented:
+  - Scaled logo to fill the entire vertical height (h-full / 96px) of the h-24 navbar.
+  - Used object-contain to ensure the logo maintains its aspect ratio while bleeding to the top and bottom of the header.
+- Files changed:
+  - src/components/Header.tsx
+---

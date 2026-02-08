@@ -48,6 +48,69 @@ interface RecentEntry {
   effectiveRate: number
 }
 
+// Icons
+const PlayIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+  </svg>
+)
+
+const PauseIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path fillRule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clipRule="evenodd" />
+  </svg>
+)
+
+const StopIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path fillRule="evenodd" d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z" clipRule="evenodd" />
+  </svg>
+)
+
+// Circular Progress Component
+const CircularProgress = ({ value, max, children, size = 180, strokeWidth = 12 }: { value: number, max: number, children: React.ReactNode, size?: number, strokeWidth?: number }) => {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  // Cap at max or allow overflow (looping) visual? Let's just clamp for simple progress or loop.
+  // Assuming 8 hours (28800s) as a "full day" target for visualization, or just use a visual filler.
+  // Let's us 8 hours as '100%'.
+  const percentage = Math.min(100, Math.max(0, (value / (8 * 3600)) * 100))
+  const dashoffset = circumference - (percentage / 100) * circumference
+
+  return (
+    <div className="relative flex items-center justify-center transition-all duration-700" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="rotate-[-90deg]">
+        {/* Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          className="text-surface-foreground/10 dark:text-white/10"
+        />
+        {/* Progress */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="var(--color-accent)"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithClient[]>([])
   const [runningTimers, setRunningTimers] = useState<Map<string, TimerDisplayInfo>>(new Map())
@@ -65,7 +128,7 @@ export default function Dashboard() {
       // Fetch active projects with client info
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
-        .select('*, clients!inner(id, name, hourly_rate, color)')
+        .select('*, clients(id, name, hourly_rate, color)')
         .eq('status', 'active')
         .order('name')
 
@@ -78,22 +141,25 @@ export default function Dashboard() {
           // Re-fetch projects after seeding
           const { data: seededData, error: seededError } = await supabase
             .from('projects')
-            .select('*, clients!inner(id, name, hourly_rate, color)')
+            .select('*, clients(id, name, hourly_rate, color)')
             .eq('status', 'active')
             .order('name')
           if (!seededError && seededData) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const seededProjects: ProjectWithClient[] = seededData.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              hourly_rate_override: p.hourly_rate_override,
-              status: p.status,
-              client_id: p.clients.id,
-              client_name: p.clients.name,
-              client_color: p.clients.color,
-              client_hourly_rate: p.clients.hourly_rate,
-              effectiveRate: p.hourly_rate_override ?? p.clients.hourly_rate,
-            }))
+            const seededProjects: ProjectWithClient[] = seededData.map((p: any) => {
+              const client = p.clients || { id: '', name: 'Unknown', hourly_rate: 0, color: '#000000' }
+              return {
+                id: p.id,
+                name: p.name,
+                hourly_rate_override: p.hourly_rate_override,
+                status: p.status,
+                client_id: client.id,
+                client_name: client.name,
+                client_color: client.color,
+                client_hourly_rate: client.hourly_rate,
+                effectiveRate: p.hourly_rate_override ?? client.hourly_rate,
+              }
+            })
             setProjects(seededProjects)
             setLoading(false)
             return
@@ -102,17 +168,20 @@ export default function Dashboard() {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mappedProjects: ProjectWithClient[] = (projectData || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        hourly_rate_override: p.hourly_rate_override,
-        status: p.status,
-        client_id: p.clients.id,
-        client_name: p.clients.name,
-        client_color: p.clients.color,
-        client_hourly_rate: p.clients.hourly_rate,
-        effectiveRate: p.hourly_rate_override ?? p.clients.hourly_rate,
-      }))
+      const mappedProjects: ProjectWithClient[] = (projectData || []).map((p: any) => {
+        const client = p.clients || { id: '', name: 'Unknown', hourly_rate: 0, color: '#000000' }
+        return {
+          id: p.id,
+          name: p.name,
+          hourly_rate_override: p.hourly_rate_override,
+          status: p.status,
+          client_id: client.id,
+          client_name: client.name,
+          client_color: client.color,
+          client_hourly_rate: client.hourly_rate,
+          effectiveRate: p.hourly_rate_override ?? client.hourly_rate,
+        }
+      })
 
       setProjects(mappedProjects)
 
@@ -150,7 +219,7 @@ export default function Dashboard() {
           projects!inner(
             name,
             hourly_rate_override,
-            clients!inner(name, hourly_rate, color)
+            clients(name, hourly_rate, color)
           )
         `)
         .eq('is_running', false)
@@ -159,17 +228,20 @@ export default function Dashboard() {
 
       if (!entriesError && todayEntries) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped: RecentEntry[] = todayEntries.map((e: any) => ({
-          id: e.id,
-          start_time: e.start_time,
-          end_time: e.end_time,
-          duration_seconds: e.duration_seconds ?? 0,
-          notes: e.notes,
-          project_name: e.projects.name,
-          client_name: e.projects.clients.name,
-          client_color: e.projects.clients.color,
-          effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
-        }))
+        const mapped: RecentEntry[] = todayEntries.map((e: any) => {
+          const client = e.projects.clients || { name: 'Unknown', hourly_rate: 0, color: '#000000' }
+          return {
+            id: e.id,
+            start_time: e.start_time,
+            end_time: e.end_time,
+            duration_seconds: e.duration_seconds ?? 0,
+            notes: e.notes,
+            project_name: e.projects.name,
+            client_name: client.name,
+            client_color: client.color,
+            effectiveRate: e.projects.hourly_rate_override ?? client.hourly_rate,
+          }
+        })
         setRecentEntries(mapped)
       }
 
@@ -257,15 +329,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="rounded-card border-2 border-gray-200 bg-background p-5 shadow-card animate-pulse">
-            <div className="mb-3 space-y-2">
-              <div className="h-3 w-20 rounded bg-gray-200" />
-              <div className="h-5 w-32 rounded bg-gray-200" />
+          <div key={i} className="glass-card p-6 animate-pulse">
+            <div className="mb-4 space-y-3">
+              <div className="h-3 w-20 rounded bg-surface-foreground/10 dark:bg-white/10" />
+              <div className="h-6 w-32 rounded bg-surface-foreground/10 dark:bg-white/10" />
             </div>
-            <div className="mb-3 h-3 w-16 rounded bg-gray-200" />
-            <div className="h-10 rounded bg-gray-200" />
+            <div className="mb-4 h-4 w-16 rounded bg-surface-foreground/10 dark:bg-white/10" />
+            <div className="h-12 rounded-full bg-surface-foreground/10 dark:bg-white/10" />
           </div>
         ))}
       </div>
@@ -274,11 +346,11 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="rounded-card border border-red-200 bg-red-50 p-6">
-        <p className="text-red-600">Failed to load dashboard: {error}</p>
+      <div className="glass-card border-red-500/30 bg-red-900/10 p-6">
+        <p className="text-red-400">Failed to load dashboard: {error}</p>
         <button
           onClick={loadData}
-          className="mt-2 text-sm font-medium text-primary hover:text-primary-dark"
+          className="mt-3 rounded-full border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10"
         >
           Retry
         </button>
@@ -290,11 +362,11 @@ export default function Dashboard() {
     return (
       <EmptyState title="No active projects">
         Add a client and project from the{' '}
-        <a href="/clients" className="font-medium text-primary hover:text-primary-dark">
+        <a href="/clients" className="font-medium text-accent hover:text-accent-light">
           Clients
         </a>{' '}
         or{' '}
-        <a href="/projects" className="font-medium text-primary hover:text-primary-dark">
+        <a href="/projects" className="font-medium text-accent hover:text-accent-light">
           Projects
         </a>{' '}
         page to get started.
@@ -323,48 +395,47 @@ export default function Dashboard() {
 
   const totalSeconds = completedSeconds + runningSeconds
   const totalEarnings = completedEarnings + runningEarnings
-  const showSummary = totalSeconds > 0
+  const showSummary = true // Always show hero area for look and feel
+
+  // Formatting helpers for the hero
+  const hours = Math.floor(totalSeconds / 3600)
+  const mins = Math.floor((totalSeconds % 3600) / 60)
 
   return (
-    <div>
-      {/* Today's Summary */}
-      {showSummary && (
-        <div className="mb-6 rounded-card border border-border bg-primary-light p-4 shadow-card">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-dark">
-            Today&apos;s Summary
-          </h2>
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-6">
-            <div>
-              <span className="font-mono text-2xl font-bold text-text">
-                {formatDuration(totalSeconds)}
-              </span>
-              <span className="ml-1 text-sm text-text-muted">total hours</span>
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="flex flex-col items-center justify-center py-6">
+        <CircularProgress value={totalSeconds} max={28800} size={240}>
+          <div className="flex flex-col items-center">
+            <span className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-2">Today</span>
+            <div className="text-5xl font-bold tracking-tight text-text dark:text-white mb-1">
+              {hours}<span className="text-2xl text-text-muted mx-1">h</span>
+              {mins}<span className="text-2xl text-text-muted">m</span>
             </div>
-            <div>
-              <span className="font-mono text-2xl font-bold text-primary">
-                {formatCurrency(totalEarnings)}
-              </span>
-              <span className="ml-1 text-sm text-text-muted">earned</span>
+            <div className="text-lg font-medium text-accent">
+              {formatCurrency(totalEarnings)}
             </div>
           </div>
-        </div>
-      )}
+        </CircularProgress>
 
-      {/* Running timers indicator */}
-      {runningCount > 0 && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-text-muted">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-          </span>
-          <span>
-            {runningCount} timer{runningCount !== 1 ? 's' : ''} running
-          </span>
+        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted/80 glass-panel px-4 py-2 rounded-full">
+          {runningCount > 0 ? (
+            <>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+              </span>
+              <span>{runningCount} project{runningCount !== 1 ? 's' : ''} active</span>
+            </>
+          ) : (
+            <span>Ready to explore</span>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Project cards grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <h3 className="text-lg font-semibold text-text dark:text-white/90 pl-2 border-l-4 border-accent">Projects</h3>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => {
           const timer = runningTimers.get(project.id)
           const isRunning = !!timer
@@ -380,85 +451,88 @@ export default function Dashboard() {
                 if (canQuickStart) handleStart(project.id)
                 else if (isPaused && !isRunning && !isDisabled) handleResume(project.id)
               }}
-              className={`relative overflow-hidden rounded-card border-2 bg-background p-5 shadow-card transition-shadow hover:shadow-md ${
-                isRunning ? 'ring-2 ring-primary/20' : ''
-              } ${canQuickStart || (isPaused && !isRunning) ? 'cursor-pointer' : ''}`}
-              style={{ borderColor: project.client_color }}
+              className={`group relative overflow-hidden glass-card p-6 transition-all duration-300 hover:scale-[1.02] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${isRunning ? 'ring-1 ring-accent shadow-[0_0_20px_rgba(132,204,22,0.15)] bg-accent/5' : ''
+                } ${canQuickStart || (isPaused && !isRunning) ? 'cursor-pointer' : ''}`}
             >
-              {/* Status indicator */}
-              {isRunning && (
-                <div className="absolute right-4 top-4 flex items-center gap-2">
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
-                  </span>
-                  <span className="text-xs font-medium text-primary">Running</span>
-                </div>
-              )}
-              {isPaused && !isRunning && (
-                <div className="absolute right-4 top-4 flex items-center gap-2">
-                  <span className="inline-flex h-3 w-3 rounded-full bg-accent" />
-                  <span className="text-xs font-medium text-accent">Paused</span>
-                </div>
-              )}
-
-              {/* Client + Project */}
-              <div className="mb-3">
-                <p className="text-sm font-medium text-text-muted">{project.client_name}</p>
-                <p className="text-lg font-semibold text-text">{project.name}</p>
+              {/* Status indicator (Top Right) */}
+              <div className="absolute top-4 right-4">
+                {isRunning ? (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent/10 border border-accent/20">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Active</span>
+                  </div>
+                ) : isPaused ? (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-500/10 border border-slate-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paused</span>
+                  </div>
+                ) : null}
               </div>
 
-              {/* Rate info */}
-              <p className="mb-3 text-sm text-text-muted">
-                {formatCurrency(project.effectiveRate)}/hr
-              </p>
+              {/* Client + Project */}
+              <div className="mb-4 pr-16">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: project.client_color }}></span>
+                  <p className="text-xs font-medium uppercase tracking-wider text-text-muted">{project.client_name}</p>
+                </div>
+                <p className="text-xl font-bold text-text dark:text-white group-hover:text-accent transition-colors">{project.name}</p>
+              </div>
 
-              {/* Timer display (when running) */}
-              {isRunning && timer && (
-                <div className="mb-4">
-                  <p className="font-mono text-2xl font-bold text-accent">
-                    {formatDuration(timer.elapsedSeconds)}
-                  </p>
-                  <p className="text-sm text-text-muted">
-                    {formatCurrency(calculateRunningCost(timer.elapsedSeconds, project.effectiveRate))}
+              {/* Timer & Rate Area */}
+              <div className="mb-6 flex items-end justify-between">
+                <div>
+                  <p className="text-xs text-text-muted mb-1">Current Session</p>
+                  <p className={`font-mono text-2xl font-bold ${isRunning ? 'text-accent' : 'text-text/60 dark:text-white/60'}`}>
+                    {isRunning && timer ? formatDuration(timer.elapsedSeconds) : '00:00:00'}
                   </p>
                 </div>
-              )}
+                <div className="text-right">
+                  <p className="text-xs text-text-muted mb-1">Rate</p>
+                  <p className="text-sm font-medium text-text/80 dark:text-white/80">{formatCurrency(project.effectiveRate)}/hr</p>
+                </div>
+              </div>
 
               {/* Controls */}
-              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
                 {isRunning ? (
                   <>
                     <button
                       onClick={() => handlePause(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 rounded-full h-12 flex items-center justify-center bg-slate-700/50 hover:bg-slate-700 text-white transition-all disabled:opacity-50"
+                      title="Pause Timer"
                     >
-                      {isDisabled ? 'Pausing...' : 'Pause'}
+                      <PauseIcon className="w-6 h-6" />
                     </button>
                     <button
                       onClick={() => handleStop(project.id)}
                       disabled={isDisabled}
-                      className="flex-1 rounded-button bg-red-500 px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 rounded-full h-12 flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-200 border border-red-500/30 transition-all disabled:opacity-50"
+                      title="Stop Timer"
                     >
-                      {isDisabled ? 'Stopping...' : 'Stop'}
+                      <StopIcon className="w-6 h-6" />
                     </button>
                   </>
                 ) : pausedProjects.has(project.id) ? (
                   <button
                     onClick={() => handleResume(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-accent px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full rounded-full h-12 flex items-center justify-center gap-2 bg-accent hover:bg-accent-light text-black font-bold transition-all disabled:opacity-50 shadow-lg shadow-accent/20"
                   >
-                    {isDisabled ? 'Resuming...' : '▶ Resume'}
+                    <PlayIcon className="w-5 h-5" />
+                    Resume
                   </button>
                 ) : (
                   <button
                     onClick={() => handleStart(project.id)}
                     disabled={isDisabled}
-                    className="flex-1 rounded-button bg-primary px-3 py-2.5 sm:py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full rounded-full h-12 flex items-center justify-center gap-2 bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 border border-border text-text dark:text-white font-medium group-hover:bg-accent group-hover:text-black group-hover:border-accent transition-all disabled:opacity-50"
                   >
-                    {isDisabled ? 'Starting...' : 'Start Timer'}
+                    <PlayIcon className="w-5 h-5" />
+                    Start Timer
                   </button>
                 )}
               </div>
@@ -469,46 +543,58 @@ export default function Dashboard() {
 
       {/* Recent Activity */}
       {recentEntries.length > 0 && (
-        <div className="mt-8">
-          <div className="mb-3 flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-text">Recent Activity</h2>
-            <span className="text-sm text-text-muted">
-              Today: {recentEntries.length} {recentEntries.length === 1 ? 'entry' : 'entries'}
+        <div className="mt-12">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-text dark:text-white/90 pl-2 border-l-4 border-slate-500">Recent Activity</h2>
+            <span className="text-xs font-medium uppercase tracking-wider text-text-muted bg-surface-foreground/5 dark:bg-white/5 px-2 py-1 rounded">
+              {recentEntries.length} {recentEntries.length === 1 ? 'entry' : 'entries'} today
             </span>
           </div>
-          <div className="divide-y divide-border overflow-hidden rounded-card border border-border bg-background shadow-card">
-            {recentEntries.map((entry) => {
-              const cost = calculateRunningCost(entry.duration_seconds, entry.effectiveRate)
-              const startDate = new Date(entry.start_time)
-              const endDate = new Date(entry.end_time)
-              const timeRange = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+          <div className="glass-panel overflow-hidden">
+            {/* List Header */}
+            <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-3 border-b border-border bg-black/5 dark:bg-black/20 text-xs font-bold uppercase tracking-widest text-text-muted">
+              <div className="col-span-5">Project / Task</div>
+              <div className="col-span-3">Client</div>
+              <div className="col-span-2 text-right">Time</div>
+              <div className="col-span-2 text-right">Earned</div>
+            </div>
 
-              return (
-                <div key={entry.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3">
-                  <span
-                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: entry.client_color }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text">
-                      {entry.project_name}
+            {/* List Body */}
+            <div>
+              {recentEntries.map((entry, index) => {
+                const cost = calculateRunningCost(entry.duration_seconds, entry.effectiveRate)
+                const startDate = new Date(entry.start_time)
+                const endDate = new Date(entry.end_time)
+                const timeRange = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+
+                return (
+                  <div key={entry.id} className={`group flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 border-b border-border last:border-0 hover:bg-surface-foreground/5 dark:hover:bg-white/5 transition-colors ${index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]'}`}>
+                    <div className="col-span-5">
+                      <p className="font-medium text-text dark:text-white truncate group-hover:text-accent transition-colors">{entry.project_name}</p>
                       {entry.notes && (
-                        <span className="hidden sm:inline ml-1 font-normal text-text-muted">— {entry.notes}</span>
+                        <p className="text-xs text-text-muted mt-0.5 truncate">{entry.notes}</p>
                       )}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      {entry.client_name} · {timeRange}
-                    </p>
+                    </div>
+
+                    <div className="col-span-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.client_color }}></span>
+                      <p className="text-sm text-text-muted">{entry.client_name}</p>
+                    </div>
+
+                    <div className="col-span-2 text-right">
+                      <p className="font-mono text-sm font-medium text-text dark:text-white">
+                        {formatDuration(entry.duration_seconds)}
+                      </p>
+                      <p className="text-xs text-text-muted sm:hidden md:block lg:block">{timeRange}</p>
+                    </div>
+
+                    <div className="col-span-2 text-right">
+                      <p className="font-medium text-accent">{formatCurrency(cost)}</p>
+                    </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
-                    <p className="font-mono text-xs sm:text-sm font-medium text-text">
-                      {formatDuration(entry.duration_seconds)}
-                    </p>
-                    <p className="text-xs text-text-muted">{formatCurrency(cost)}</p>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

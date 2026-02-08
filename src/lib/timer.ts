@@ -374,7 +374,7 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
         id,
         name,
         hourly_rate_override,
-        clients!inner(
+        clients(
           id,
           name,
           hourly_rate,
@@ -395,7 +395,7 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((entry: any) => {
     const project = entry.projects
-    const client = project.clients
+    const client = project.clients || { id: '', name: 'Unknown', hourly_rate: 0, color: '#000000' }
     const effectiveRate = project.hourly_rate_override ?? client.hourly_rate
 
     return {

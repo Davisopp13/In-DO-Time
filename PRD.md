@@ -23,7 +23,7 @@
 ## DO Code Lab Branding
 
 ### Logo
-- File: `public/DO_CODE_LAB_LOGO_NO_TEXT.png`
+- File: `public/DO_CODE_LAB_LOGO.png`
 - Use in: app header/nav (32-40px height), report exports (larger, top of page), empty states (centered watermark), and generate a favicon from it
 - The logo is the "DO" letterforms with mountain imagery in green gradient — no text included, always pair with "In DO Time" or "DO Code Lab" text beside it
 
@@ -154,14 +154,14 @@ CREATE INDEX idx_projects_client ON projects(client_id);
 - PDF invoice export (CSV only for MVP)
 
 ## Success Criteria
-- [ ] Can start/stop/pause multiple timers simultaneously
-- [ ] Timers persist across browser sessions via Supabase
-- [ ] Can add clients with hourly rates and projects under them
-- [ ] Time entries auto-log when timer stops
-- [ ] Can view, filter, edit, and delete time history
-- [ ] Can export CSV filtered by client + date range
-- [ ] DO Code Lab logo appears in header, reports, and empty states
-- [ ] Deployed to Vercel and accessible from any device
+- [x] Can start/stop/pause multiple timers simultaneously
+- [x] Timers persist across browser sessions via Supabase
+- [x] Can add clients with hourly rates and projects under them
+- [x] Time entries auto-log when timer stops
+- [x] Can view, filter, edit, and delete time history
+- [x] Can export CSV filtered by client + date range
+- [x] DO Code Lab logo appears in header, reports, and empty states
+- [x] Deployed to Vercel and accessible from any device
 - [ ] Used to track 1 full week of work on B.B.'s site
 
 ## UI Layout Reference

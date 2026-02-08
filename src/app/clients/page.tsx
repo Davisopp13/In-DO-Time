@@ -177,10 +177,10 @@ export default function ClientsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-text">Clients</h1>
+        <h1 className="text-2xl font-bold text-text dark:text-white">Clients</h1>
         <button
           onClick={openAddForm}
-          className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+          className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 shadow-lg shadow-primary/20"
         >
           + Add Client
         </button>
@@ -200,9 +200,9 @@ export default function ClientsPage() {
           id="showArchived"
           checked={showArchived}
           onChange={(e) => setShowArchived(e.target.checked)}
-          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+          className="h-4 w-4 rounded border-border bg-surface/50 dark:bg-black/20 text-primary focus:ring-primary"
         />
-        <label htmlFor="showArchived" className="text-sm text-text-muted">
+        <label htmlFor="showArchived" className="text-sm font-medium text-text-muted">
           Show archived clients
         </label>
       </div>
@@ -211,17 +211,17 @@ export default function ClientsPage() {
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-card bg-background p-4 shadow-card border-l-4 border-gray-200 animate-pulse">
+            <div key={i} className="glass-card p-6 border-l-4 border-border animate-pulse">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <div className="h-4 w-28 rounded bg-gray-200" />
-                  <div className="h-3 w-16 rounded bg-gray-200" />
+                  <div className="h-4 w-28 rounded bg-surface/20 dark:bg-white/10" />
+                  <div className="h-3 w-16 rounded bg-surface/20 dark:bg-white/10" />
                 </div>
-                <div className="h-4 w-4 rounded-full bg-gray-200" />
+                <div className="h-4 w-4 rounded-full bg-surface/20 dark:bg-white/10" />
               </div>
               <div className="mt-4 flex gap-2">
-                <div className="h-7 w-12 rounded bg-gray-200" />
-                <div className="h-7 w-16 rounded bg-gray-200" />
+                <div className="h-7 w-12 rounded bg-surface/20 dark:bg-white/10" />
+                <div className="h-7 w-16 rounded bg-surface/20 dark:bg-white/10" />
               </div>
             </div>
           ))}
@@ -235,19 +235,18 @@ export default function ClientsPage() {
           {clients.map((client) => (
             <div
               key={client.id}
-              className={`rounded-card bg-background p-4 shadow-card border-l-4 ${
-                client.status === 'archived' ? 'opacity-60' : ''
-              }`}
+              className={`glass-card p-6 shadow-card border-l-4 transition-all duration-300 hover:scale-[1.01] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${client.status === 'archived' ? 'opacity-60 grayscale' : ''
+                }`}
               style={{ borderLeftColor: client.color }}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-medium text-text">{client.name}</h3>
-                  <p className="text-sm text-text-muted">
-                    ${client.hourly_rate.toFixed(2)}/hr
+                  <h3 className="font-bold text-lg text-text dark:text-white group-hover:text-primary transition-colors">{client.name}</h3>
+                  <p className="text-sm text-text-muted mt-1">
+                    ${client.hourly_rate.toFixed(2)}<span className="text-xs text-text-muted/70">/hr</span>
                   </p>
                   {client.status === 'archived' && (
-                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                    <span className="inline-block mt-2 px-2 py-0.5 text-[10px] uppercase font-bold bg-surface-foreground/10 dark:bg-white/10 text-text-muted/70 dark:text-white/50 rounded">
                       Archived
                     </span>
                   )}
@@ -257,21 +256,20 @@ export default function ClientsPage() {
                   style={{ backgroundColor: client.color }}
                 />
               </div>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-6 flex gap-2">
                 <button
                   onClick={() => openEditForm(client)}
-                  className="rounded-button px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-light transition-colors"
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-text-muted hover:text-text dark:text-white/70 bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 dark:hover:text-white transition-colors border border-border dark:border-white/5"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleArchive(client)}
                   disabled={archivingId === client.id}
-                  className={`rounded-button px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    client.status === 'active'
-                      ? 'text-text-muted hover:bg-gray-100'
-                      : 'text-primary hover:bg-primary-light'
-                  }`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors border border-border dark:border-white/5 disabled:opacity-50 disabled:cursor-not-allowed ${client.status === 'active'
+                    ? 'text-text-muted hover:text-text dark:text-white/70 bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 dark:hover:text-white'
+                    : 'text-primary bg-primary/10 hover:bg-primary/20'
+                    }`}
                 >
                   {archivingId === client.id
                     ? 'Processing...'
@@ -285,9 +283,9 @@ export default function ClientsPage() {
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-card bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-text">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
+            <h2 className="mb-4 text-xl font-bold text-text dark:text-white">
               {editingClient ? 'Edit Client' : 'Add New Client'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -302,7 +300,7 @@ export default function ClientsPage() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-button border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                   placeholder="Enter client name"
                 />
               </div>
@@ -319,7 +317,7 @@ export default function ClientsPage() {
                   onChange={(e) => setFormRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="mt-1 w-full rounded-button border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                   placeholder="0.00"
                 />
               </div>
@@ -333,9 +331,8 @@ export default function ClientsPage() {
                       key={color}
                       type="button"
                       onClick={() => setFormColor(color)}
-                      className={`h-8 w-8 rounded-full transition-transform ${
-                        formColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''
-                      }`}
+                      className={`h-8 w-8 rounded-full transition-transform ${formColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''
+                        }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -347,14 +344,14 @@ export default function ClientsPage() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:bg-gray-100 transition-colors"
+                  className="rounded-full px-4 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Client'}
                 </button>

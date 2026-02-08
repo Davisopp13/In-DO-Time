@@ -95,7 +95,7 @@ export default function TimeLogPage() {
             name,
             hourly_rate_override,
             client_id,
-            clients!inner(id, name, hourly_rate, color)
+            clients(id, name, hourly_rate, color)
           )
         `)
         .order('start_time', { ascending: false })
@@ -126,21 +126,24 @@ export default function TimeLogPage() {
       if (fetchError) throw fetchError
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: TimeLogEntry[] = (data || []).map((e: any) => ({
-        id: e.id,
-        start_time: e.start_time,
-        end_time: e.end_time,
-        duration_seconds: e.duration_seconds,
-        notes: e.notes,
-        is_running: e.is_running,
-        is_manual: e.is_manual,
-        project_id: e.project_id,
-        project_name: e.projects.name,
-        client_id: e.projects.client_id,
-        client_name: e.projects.clients.name,
-        client_color: e.projects.clients.color,
-        effectiveRate: e.projects.hourly_rate_override ?? e.projects.clients.hourly_rate,
-      }))
+      const mapped: TimeLogEntry[] = (data || []).map((e: any) => {
+        const client = e.projects.clients || { name: 'Unknown', hourly_rate: 0, color: '#000000' }
+        return {
+          id: e.id,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          duration_seconds: e.duration_seconds,
+          notes: e.notes,
+          is_running: e.is_running,
+          is_manual: e.is_manual,
+          project_id: e.project_id,
+          project_name: e.projects.name,
+          client_id: e.projects.client_id,
+          client_name: client.name,
+          client_color: client.color,
+          effectiveRate: e.projects.hourly_rate_override ?? client.hourly_rate,
+        }
+      })
 
       setEntries(mapped)
       setError(null)
@@ -275,20 +278,16 @@ export default function TimeLogPage() {
 
   // Group entries by date
   const groupedEntries = entries.reduce<Record<string, TimeLogEntry[]>>((groups, entry) => {
-    const date = new Date(entry.start_time).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-    if (!groups[date]) groups[date] = []
-    groups[date].push(entry)
+    const d = new Date(entry.start_time)
+    const formattedDate = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    if (!groups[formattedDate]) groups[formattedDate] = []
+    groups[formattedDate].push(entry)
     return groups
   }, {})
 
   if (loading) {
     return (
-      <div className="rounded-card border border-border bg-background p-6 shadow-card">
+      <div className="glass-card p-6">
         <div className="animate-pulse text-text-muted">Loading time entries...</div>
       </div>
     )
@@ -296,11 +295,11 @@ export default function TimeLogPage() {
 
   if (error) {
     return (
-      <div className="rounded-card border border-red-200 bg-red-50 p-6">
-        <p className="text-red-600">Failed to load time entries: {error}</p>
+      <div className="glass-card border-red-500/30 bg-red-900/10 p-6">
+        <p className="text-red-400">Failed to load time entries: {error}</p>
         <button
           onClick={loadEntries}
-          className="mt-2 text-sm font-medium text-primary hover:text-primary-dark"
+          className="mt-2 text-sm font-medium text-white hover:text-accent"
         >
           Retry
         </button>
@@ -312,7 +311,7 @@ export default function TimeLogPage() {
     <div>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Time Log</h1>
+          <h1 className="text-2xl font-bold text-text dark:text-white">Time Log</h1>
           <p className="text-sm text-text-muted">
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
             {hasFilters ? ' (filtered)' : ' total'}
@@ -320,14 +319,14 @@ export default function TimeLogPage() {
         </div>
         <button
           onClick={openManualModal}
-          className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark self-start sm:self-auto"
+          className="rounded-full bg-accent px-5 py-2 text-sm font-bold text-black hover:bg-accent-light transition-colors self-start sm:self-auto shadow-lg shadow-accent/20"
         >
           + Manual Entry
         </button>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 rounded-card border border-border bg-background p-4 shadow-card">
+      <div className="mb-6 glass-card p-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           {/* Client filter */}
           <div className="col-span-2 sm:col-span-1">
@@ -338,11 +337,11 @@ export default function TimeLogPage() {
                 setSelectedClient(e.target.value)
                 setSelectedProject('')
               }}
-              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">All Clients</option>
+              <option value="" className="bg-surface dark:bg-slate-900">All Clients</option>
               {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id} className="bg-surface dark:bg-slate-900">{c.name}</option>
               ))}
             </select>
           </div>
@@ -353,11 +352,11 @@ export default function TimeLogPage() {
             <select
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">All Projects</option>
+              <option value="" className="bg-surface dark:bg-slate-900">All Projects</option>
               {filteredProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id} className="bg-surface dark:bg-slate-900">{p.name}</option>
               ))}
             </select>
           </div>
@@ -369,7 +368,7 @@ export default function TimeLogPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
 
@@ -380,7 +379,7 @@ export default function TimeLogPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
 
@@ -389,7 +388,7 @@ export default function TimeLogPage() {
             <div className="col-span-2 flex items-end sm:col-span-4 lg:col-span-1">
               <button
                 onClick={clearFilters}
-                className="rounded-button px-3 py-2 text-sm font-medium text-text-muted hover:text-text"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
               >
                 Clear
               </button>
@@ -403,14 +402,14 @@ export default function TimeLogPage() {
           {hasFilters ? (
             <button
               onClick={clearFilters}
-              className="font-medium text-primary hover:text-primary-dark"
+              className="font-medium text-accent hover:text-accent-light"
             >
               Clear filters
             </button>
           ) : (
             <>
               Start a timer from the{' '}
-              <Link href="/" className="font-medium text-primary hover:text-primary-dark">
+              <Link href="/" className="font-medium text-accent hover:text-accent-light">
                 Dashboard
               </Link>{' '}
               to begin tracking time.
@@ -418,7 +417,7 @@ export default function TimeLogPage() {
           )}
         </EmptyState>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {Object.entries(groupedEntries).map(([date, dayEntries]) => {
             const dayTotal = dayEntries.reduce(
               (sum, e) => sum + (e.duration_seconds ?? 0),
@@ -432,20 +431,20 @@ export default function TimeLogPage() {
 
             return (
               <div key={date}>
-                {/* Date header */}
-                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                {/* Date header - Trail Marker Style */}
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-2 pl-4 border-l-4 border-slate-600">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-text-muted">
                     {date}
                   </h2>
-                  <div className="flex items-center gap-3 text-sm text-text-muted">
-                    <span className="font-mono">{formatDuration(dayTotal)}</span>
-                    <span>{formatCurrency(dayEarnings)}</span>
+                  <div className="flex items-center gap-4 text-sm font-medium text-text-muted">
+                    <span className="font-mono text-text/50 dark:text-white/50">{formatDuration(dayTotal)}</span>
+                    <span className="text-accent">{formatCurrency(dayEarnings)}</span>
                   </div>
                 </div>
 
                 {/* Entries for this date */}
-                <div className="divide-y divide-border overflow-hidden rounded-card border border-border bg-background shadow-card">
-                  {dayEntries.map((entry) => {
+                <div className="glass-panel overflow-hidden">
+                  {dayEntries.map((entry, index) => {
                     const duration = entry.duration_seconds ?? 0
                     const cost = calculateRunningCost(duration, entry.effectiveRate)
                     const startDate = new Date(entry.start_time)
@@ -456,59 +455,62 @@ export default function TimeLogPage() {
                     })
                     const endTimeStr = endDate
                       ? endDate.toLocaleTimeString([], {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
                       : 'Running'
 
                     return (
-                      <div key={entry.id} className="px-4 py-3">
-                        <div className="flex items-start gap-3">
+                      <div
+                        key={entry.id}
+                        className={`px-6 py-4 border-b border-border last:border-0 transition-colors hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]' /* Zebra Striping */
+                          }`}
+                      >
+                        <div className="flex items-start gap-4">
                           {/* Client color indicator */}
                           <span
-                            className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
+                            className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full"
                             style={{ backgroundColor: entry.client_color }}
                           />
 
                           {/* Main info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-sm font-medium text-text">
+                              <p className="truncate text-base font-medium text-text dark:text-white">
                                 {entry.project_name}
                               </p>
                               {entry.is_running && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-primary-light px-2 py-0.5 text-xs font-medium text-primary">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/20 border border-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
                                   <span className="relative flex h-1.5 w-1.5">
-                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
                                   </span>
                                   Running
                                 </span>
                               )}
                               {entry.is_manual && (
-                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-text-muted">
+                                <span className="rounded-full bg-surface-foreground/10 dark:bg-white/10 px-2 py-0.5 text-[10px] uppercase font-bold text-text-muted">
                                   Manual
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-text-muted">
-                              {entry.client_name} · {startTimeStr} – {endTimeStr}
-                              {entry.notes && (
-                                <span className="hidden sm:inline ml-1">· {entry.notes}</span>
-                              )}
+                            <p className="text-sm text-text-muted mt-0.5">
+                              {entry.client_name} <span className="mx-1 text-text-muted/20 dark:text-white/20">|</span> {startTimeStr} – {endTimeStr}
                             </p>
                             {entry.notes && (
-                              <p className="sm:hidden text-xs text-text-muted truncate mt-0.5">{entry.notes}</p>
+                              <p className="text-sm text-text/60 dark:text-white/60 mt-1 italic">
+                                "{entry.notes}"
+                              </p>
                             )}
                           </div>
 
                           {/* Edit + Delete buttons + Duration/Cost */}
-                          <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+                          <div className="flex flex-shrink-0 items-center gap-2 sm:gap-4">
                             {!entry.is_running && (
-                              <div className="hidden sm:flex gap-1">
+                              <div className="hidden sm:flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => openEditModal(entry)}
-                                  className="rounded-button p-1.5 text-text-muted hover:bg-primary-light hover:text-primary"
+                                  className="rounded-full p-2 text-text-muted hover:bg-surface-foreground/10 dark:hover:bg-white/10 hover:text-text dark:hover:text-white transition-colors"
                                   title="Edit entry"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -517,7 +519,7 @@ export default function TimeLogPage() {
                                 </button>
                                 <button
                                   onClick={() => setDeletingEntry(entry)}
-                                  className="rounded-button p-1.5 text-text-muted hover:bg-red-50 hover:text-red-600"
+                                  className="rounded-full p-2 text-text-muted hover:bg-red-500/20 hover:text-red-400 transition-colors"
                                   title="Delete entry"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -528,11 +530,11 @@ export default function TimeLogPage() {
                             )}
 
                             {/* Duration + Cost */}
-                            <div className="text-right">
-                              <p className="font-mono text-sm font-medium text-text">
+                            <div className="text-right min-w-[80px]">
+                              <p className="font-mono text-sm font-medium text-text dark:text-white">
                                 {entry.is_running ? '—' : formatDuration(duration)}
                               </p>
-                              <p className="text-xs text-text-muted">
+                              <p className="text-xs text-accent">
                                 {entry.is_running ? '—' : formatCurrency(cost)}
                               </p>
                             </div>
@@ -540,16 +542,16 @@ export default function TimeLogPage() {
                         </div>
                         {/* Mobile action buttons */}
                         {!entry.is_running && (
-                          <div className="sm:hidden mt-2 ml-6 flex gap-2">
+                          <div className="sm:hidden mt-3 ml-6 flex gap-3">
                             <button
                               onClick={() => openEditModal(entry)}
-                              className="rounded-button px-3 py-1 text-xs font-medium text-primary hover:bg-primary-light"
+                              className="text-xs font-medium text-text-muted hover:text-text dark:hover:text-white"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => setDeletingEntry(entry)}
-                              className="rounded-button px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                              className="text-xs font-medium text-red-400 hover:text-red-300"
                             >
                               Delete
                             </button>
@@ -567,30 +569,30 @@ export default function TimeLogPage() {
 
       {/* Delete Confirmation Dialog */}
       {deletingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-card border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-2 text-lg font-semibold text-text">Delete Entry?</h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm glass-card p-6 shadow-2xl bg-surface dark:bg-[#0F172A]">
+            <h2 className="mb-2 text-lg font-semibold text-text dark:text-white">Delete Entry?</h2>
             <p className="mb-1 text-sm text-text-muted">
               This will permanently delete the time entry for:
             </p>
-            <p className="mb-4 text-sm font-medium text-text">
+            <p className="mb-6 text-sm font-medium text-text dark:text-white">
               {deletingEntry.project_name} — {deletingEntry.client_name}
               <br />
-              <span className="font-normal text-text-muted">
-                {new Date(deletingEntry.start_time).toLocaleDateString()} · {formatDuration(deletingEntry.duration_seconds ?? 0)} · {formatCurrency(calculateRunningCost(deletingEntry.duration_seconds ?? 0, deletingEntry.effectiveRate))}
+              <span className="font-normal text-text-muted opactiy-80">
+                {new Date(deletingEntry.start_time).toLocaleDateString()}
               </span>
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletingEntry(null)}
-                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+                className="rounded-full px-4 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="rounded-button bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
@@ -601,59 +603,59 @@ export default function TimeLogPage() {
 
       {/* Manual Entry Modal */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-card border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-text">Add Manual Time Entry</h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md glass-card p-6 shadow-2xl bg-surface dark:bg-[#0F172A]">
+            <h2 className="mb-4 text-lg font-semibold text-text dark:text-white">Add Manual Time Entry</h2>
 
             {manualError && (
-              <div className="mb-4 rounded-button bg-red-50 p-3 text-sm text-red-600">
+              <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
                 {manualError}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">Project</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Project</label>
                 <select
                   value={manualProject}
                   onChange={(e) => setManualProject(e.target.value)}
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 >
-                  <option value="">Select a project...</option>
+                  <option value="" className="bg-surface dark:bg-slate-900">Select a project...</option>
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id} className="bg-surface dark:bg-slate-900">{p.name}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">Start Time</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Start Time</label>
                 <input
                   type="datetime-local"
                   value={manualStartTime}
                   onChange={(e) => setManualStartTime(e.target.value)}
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">End Time</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">End Time</label>
                 <input
                   type="datetime-local"
                   value={manualEndTime}
                   onChange={(e) => setManualEndTime(e.target.value)}
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">Notes</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Notes</label>
                 <input
                   type="text"
                   value={manualNotes}
                   onChange={(e) => setManualNotes(e.target.value)}
                   placeholder="Optional notes"
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                 />
               </div>
             </div>
@@ -661,14 +663,14 @@ export default function TimeLogPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setShowManualModal(false)}
-                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+                className="rounded-full px-4 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleManualSave}
                 disabled={manualSaving}
-                className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+                className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-black hover:bg-accent-light disabled:opacity-50"
               >
                 {manualSaving ? 'Saving...' : 'Add Entry'}
               </button>
@@ -679,50 +681,50 @@ export default function TimeLogPage() {
 
       {/* Edit Modal */}
       {editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-card border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-text">Edit Time Entry</h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md glass-card p-6 shadow-2xl bg-surface dark:bg-[#0F172A]">
+            <h2 className="mb-4 text-lg font-semibold text-text dark:text-white">Edit Time Entry</h2>
             <p className="mb-4 text-sm text-text-muted">
               {editingEntry.project_name} — {editingEntry.client_name}
             </p>
 
             {editError && (
-              <div className="mb-4 rounded-button bg-red-50 p-3 text-sm text-red-600">
+              <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
                 {editError}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">Start Time</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Start Time</label>
                 <input
                   type="datetime-local"
                   value={editStartTime}
                   onChange={(e) => setEditStartTime(e.target.value)}
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
 
               {editingEntry.end_time && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text">End Time</label>
+                  <label className="mb-1 block text-sm font-medium text-text-muted">End Time</label>
                   <input
                     type="datetime-local"
                     value={editEndTime}
                     onChange={(e) => setEditEndTime(e.target.value)}
-                    className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
               )}
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">Notes</label>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Notes</label>
                 <input
                   type="text"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="Optional notes"
-                  className="w-full rounded-button border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                 />
               </div>
             </div>
@@ -730,14 +732,14 @@ export default function TimeLogPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={closeEditModal}
-                className="rounded-button px-4 py-2 text-sm font-medium text-text-muted hover:text-text"
+                className="rounded-full px-4 py-2 text-sm font-medium text-text-muted hover:text-text dark:hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleEditSave}
                 disabled={editSaving}
-                className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+                className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-black hover:bg-accent-light disabled:opacity-50"
               >
                 {editSaving ? 'Saving...' : 'Save Changes'}
               </button>
