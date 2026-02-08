@@ -34,7 +34,7 @@ export async function seedDefaultClients(): Promise<{ seeded: boolean; message: 
     return { seeded: false, message: `Failed to check existing clients: ${fetchError.message}` }
   }
 
-  const existingNames = new Set((existingClients || []).map(c => c.name))
+  const existingNames = new Set((existingClients || []).map((c: { name: string }) => c.name))
   let seededCount = 0
 
   for (const clientDef of DEFAULT_CLIENTS) {

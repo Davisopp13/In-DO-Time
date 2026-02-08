@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import DemoBanner from "@/components/DemoBanner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeWatcher } from "@/components/ThemeWatcher";
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         >
           <ThemeWatcher />
           <div className="min-h-screen">
+            <DemoBanner />
             <Header />
             <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
               {children}
