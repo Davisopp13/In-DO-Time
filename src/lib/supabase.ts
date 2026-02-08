@@ -13,6 +13,7 @@ export function isDemoMode(): boolean {
 export function getSupabase(): any {
   // Return demo client if in demo mode
   if (isDemoMode()) {
+    console.log('[Supabase] Running in DEMO MODE - using mock data')
     return getDemoSupabaseClient()
   }
 
@@ -26,7 +27,12 @@ export function getSupabase(): any {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
+    console.error('[Supabase] Missing environment variables:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      demoMode: process.env.NEXT_PUBLIC_DEMO_MODE,
+    })
+    throw new Error('Missing Supabase environment variables. Set NEXT_PUBLIC_DEMO_MODE=true for demo mode, or provide Supabase credentials.')
   }
 
   supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey)
