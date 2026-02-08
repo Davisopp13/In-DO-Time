@@ -83,7 +83,7 @@ export default function Header() {
         <div className={`fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] md:hidden transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)} />
 
         {/* Mobile Navigation Dropdown */}
-        <div className={`absolute top-full right-0 mt-2 w-full max-w-sm transform transition-all duration-300 origin-top-right md:hidden ${mobileMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
+        <div className={`absolute top-full right-0 mt-2 w-full max-w-sm transform transition-all duration-300 origin-top-right md:hidden z-[60] ${mobileMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
           <nav className="glass-panel mx-4 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl bg-surface/95 backdrop-blur-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
