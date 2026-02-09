@@ -215,12 +215,12 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-text dark:text-white">Projects</h1>
         <button
           onClick={openAddForm}
           disabled={clients.length === 0}
-          className="rounded-full bg-accent px-5 py-2 text-sm font-bold text-black transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/20"
+          className="rounded-full bg-accent px-5 py-2 text-sm font-bold text-black transition-colors hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto shadow-lg shadow-accent/20"
         >
           + Add Project
         </button>
