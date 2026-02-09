@@ -176,11 +176,11 @@ export default function ClientsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-text dark:text-white">Clients</h1>
         <button
           onClick={openAddForm}
-          className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 shadow-lg shadow-primary/20"
+          className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 self-start sm:self-auto shadow-lg shadow-primary/20"
         >
           + Add Client
         </button>
