@@ -36,6 +36,7 @@ export async function startTimer(projectId: string, notes?: string): Promise<Tim
     start_time: new Date().toISOString(),
     is_running: true,
     is_manual: false,
+    source: 'manual',
     notes: notes || null,
   }
 
@@ -322,6 +323,7 @@ export function formatDuration(seconds: number): string {
 
 /**
  * Calculate running cost based on elapsed time and hourly rate
+ * Pure math helper — rate resolution is the caller's responsibility (see rates.ts)
  */
 export function calculateRunningCost(seconds: number, hourlyRate: number): number {
   const hours = seconds / 3600
@@ -339,7 +341,7 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Running timer with full project and client info
+ * Running timer with full project and trail info
  * Used for dashboard display of all simultaneous timers
  */
 export interface RunningTimerWithProject {
@@ -347,21 +349,20 @@ export interface RunningTimerWithProject {
   project: {
     id: string
     name: string
-    hourly_rate_override: number | null
   }
-  client: {
+  trail: {
     id: string
     name: string
-    hourly_rate: number
     color: string
+    is_billable: boolean
   }
-  effectiveRate: number
 }
 
 /**
- * Get all running timers with their project and client information
+ * Get all running timers with their project and trail information
  * Supports multiple simultaneous timers (one per project)
- * Returns data needed for dashboard display: timer, project, client, and effective rate
+ * Returns data needed for dashboard display: timer, project, and trail
+ * Cost computation is done by callers via rates.ts
  */
 export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWithProject[]> {
   const supabase = getSupabase()
@@ -373,12 +374,11 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
       projects!inner(
         id,
         name,
-        hourly_rate_override,
-        clients(
+        trails!inner(
           id,
           name,
-          hourly_rate,
-          color
+          color,
+          is_billable
         )
       )
     `)
@@ -395,8 +395,7 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((entry: any) => {
     const project = entry.projects
-    const client = project.clients || { id: '', name: 'Unknown', hourly_rate: 0, color: '#000000' }
-    const effectiveRate = project.hourly_rate_override ?? client.hourly_rate
+    const trail = project.trails || { id: '', name: 'Unknown', color: '#3A7D44', is_billable: false }
 
     return {
       timeEntry: {
@@ -408,21 +407,21 @@ export async function getAllRunningTimersWithProjects(): Promise<RunningTimerWit
         notes: entry.notes,
         is_manual: entry.is_manual,
         is_running: entry.is_running,
+        source: entry.source,
+        source_observation_id: entry.source_observation_id,
         created_at: entry.created_at,
         updated_at: entry.updated_at,
       },
       project: {
         id: project.id,
         name: project.name,
-        hourly_rate_override: project.hourly_rate_override,
       },
-      client: {
-        id: client.id,
-        name: client.name,
-        hourly_rate: client.hourly_rate,
-        color: client.color,
+      trail: {
+        id: trail.id,
+        name: trail.name,
+        color: trail.color,
+        is_billable: trail.is_billable,
       },
-      effectiveRate,
     }
   })
 }
@@ -541,6 +540,7 @@ export async function createManualEntry(
     duration_seconds: durationSeconds,
     is_running: false,
     is_manual: true,
+    source: 'manual',
     notes: notes || null,
   }
 

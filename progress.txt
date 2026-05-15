@@ -80,6 +80,15 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - `.next/types/routes.d` duplicate identifier errors are pre-existing generated-file artifacts, not caused by this change.
 ---
 
+## Iteration 5 - Task 5: Update `src/lib/timer.ts` for trails
+- What was implemented: Added `source: 'manual'` to all TimeEntryInsert objects in `startTimer` and `createManualEntry`. Updated `RunningTimerWithProject` interface to replace `client`/`effectiveRate` fields with a `trail` object (id, name, color, is_billable). Rewrote `getAllRunningTimersWithProjects` to join `projects → trails` instead of `projects → clients`. Kept `calculateRunningCost` as a pure math helper (callers still need it; rate *resolution* happens in rates.ts).
+- Files changed: `src/lib/timer.ts` (updated), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - Removing `calculateRunningCost` entirely breaks `full-loop.test.ts` and `csv.ts` which import it. PRD acceptance only says "no `client`/`client_id` references, all inserts include `source`" — keep the pure math helper, remove client-specific logic only.
+  - `TimeEntry` Row type now has `source` and `source_observation_id` — include them when manually mapping entry fields to avoid incomplete-type errors.
+  - `getAllRunningTimersWithProjects` now returns `trail` (not `client`) with `is_billable` flag; callers use rates.ts to compute cost.
+---
+
 ## Roadmap (For Future Context, Not This Run)
 
 ### Ralph Run #2 — Capture Layer

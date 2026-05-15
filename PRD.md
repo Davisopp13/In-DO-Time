@@ -206,7 +206,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Test: write a Vitest unit test in `src/__tests__/rates.test.ts` with mock data covering: project rate wins over trail rate, fallback to trail when no project rate, returns null when no rate exists, time-effectivity (rate change between two dates).
   - Acceptance: tests pass with `npm run test`.
 
-- [ ] **Task 5: Update `src/lib/timer.ts` for trails**
+- [x] **Task 5: Update `src/lib/timer.ts` for trails**
   - Remove any references to clients or implicit rate-on-entry.
   - Timer functions (`startTimer`, `stopTimer`, `pauseTimer`, `resumeTimer`, `getRunningTimers`, etc.) operate on `project_id` as before, but make no assumptions about rate.
   - Add `source: 'manual'` to inserts (the new column).
