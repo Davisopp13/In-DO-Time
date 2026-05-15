@@ -1,789 +1,90 @@
-# Progress Notes - In DO Time
+# In DO Time v2 Foundation — Progress Log
 
-## Iteration 1 - Scaffold Next.js project with TailwindCSS and App Router
-- What was implemented:
-  - Scaffolded Next.js 16.1.6 with App Router and TypeScript
-  - TailwindCSS 4.x configured with PostCSS
-  - ESLint configured for Next.js
-  - Source files in `src/` directory with `@/*` import alias
-  - Moved DO Code Lab logo to `public/DO_CODE_LAB_LOGO_NO_TEXT.png`
-- Files changed:
-  - Created standard Next.js project structure
-  - package.json (name: "in-do-time")
-  - src/app/layout.tsx, page.tsx, globals.css
-  - tsconfig.json, next.config.ts, tailwind.config.ts
-  - postcss.config.mjs, eslint.config.mjs
+## Project: In DO Time v2 (Foundation)
+Started: 2026-05-14
+
+## Goal of This Ralph Run
+
+Reset the schema and code around "trails" (replacing `clients`) and add a `rates` ledger.
+End state: a working v2-shape time tracker. NO journal, observations, or briefing yet.
+
+## Pre-existing Learnings (from v1 + design conversation)
+
+- This is a Next.js 16 + Supabase + Tailwind 4 app. Single-user, no auth. RLS is on but permissive.
+- Supabase client is accessed exclusively via `getSupabase()` from `src/lib/supabase.ts`. Don't create new clients.
+- Demo mode is real and important — `NEXT_PUBLIC_DEMO_MODE=true` swaps to a mock client in `src/lib/supabaseDemo.ts`. Both code paths must work end-to-end. If a query is added in real Supabase, the demo client must handle it too.
+- Types flow from `src/types/database.ts`. It is the single source of truth for table shapes. Update this FIRST when changing schema.
+- v1 schema had `clients` / `projects` / `time_entries`. v2 schema has `trails` / `projects` / `rates` / `time_entries`. The `projects` table is re-parented from `client_id` to `trail_id`.
+- Migration is DESTRUCTIVE — drop v1 tables, create v2 tables. Davis has confirmed no production data to preserve. Don't try to migrate data across.
+- Ralph WRITES the migration SQL but does NOT execute it. Davis runs migrations manually in Supabase SQL Editor after this run completes.
+- Rates are time-versioned. A rate row is immutable once inserted. To "change" a rate, insert a new row with new `effective_from` AND update the previous row's `effective_until`.
+- The trail `kind` enum is exactly: `client`, `employer`, `personal`, `project`. No others.
+- Time entries no longer carry rate. Cost is computed at query/display time via `src/lib/rates.ts`.
+- `time_entries.notes` is now semantically "invoice line description only" — not a general capture field. Capture will live in observations (run #2).
+- `time_entries.source_observation_id` is a UUID column with NO FK constraint yet. The `observations` table doesn't exist until run #2.
+
+## Patterns to Preserve
+
+- Brand: DO Code Lab logo, "In DO Time" wordmark, green palette (`#3A7D44` primary).
+- Typography: Playfair Display (headings), Inter (body).
+- Spacing: 8px grid. Radius: 8px (buttons/inputs), 12px (cards).
+- Theme: light/dark via `next-themes`. ThemeProvider/ThemeToggle/ThemeWatcher components are unchanged.
+- Timer engine in `src/lib/timer.ts` is the only place timer operations live. Don't duplicate this logic elsewhere.
+
+## Anti-Patterns (Things Ralph Should NOT Do)
+
+- Do NOT try to preserve v1 data through the schema reset. The migration is destructive by design.
+- Do NOT create a separate `clients` concept alongside trails. Clients are just trails with `kind='client'`.
+- Do NOT add a rate column to `time_entries`. Rates live in the `rates` table only.
+- Do NOT UPDATE a rate row in place. Always insert a new one.
+- Do NOT refactor unrelated code "while you're in there." Stay focused on the task list.
+- Do NOT build journal, observation, briefing, or open-loop features in this run. They are explicitly out of scope.
+- Do NOT introduce new state libraries (Zustand, Redux, etc.). The existing React-state + Supabase pattern stays.
+
+## Learnings
+
+### Task 1 — Migration SQL
+- The `update_updated_at_column()` trigger function is re-created with `CREATE OR REPLACE` to be idempotent (safe if 001 already ran it).
+- No trigger on `rates` table by design — rate rows are immutable; changes = new INSERT, not UPDATE.
+- `DROP TABLE IF EXISTS ... CASCADE` drops child FK rows cleanly without needing to order drops by dependency.
+- The comment line "-- STEP 4: CREATE INDEXES" contains "CREATE INDEX" text and inflates grep -c counts by 1; actual index count was 8 as specified.
+
+---
+
+## Iteration 1 - Task 1: Write destructive migration SQL
+- What was implemented: Created `supabase/migrations/003_v2_schema_reset.sql` with full v2 schema reset.
+- Files changed: `supabase/migrations/003_v2_schema_reset.sql` (new), `PRD.md` (task marked complete), `progress.txt` (this update).
 - Learnings for future iterations:
-  - Next.js 16 uses TailwindCSS v4 with new PostCSS plugin (@tailwindcss/postcss)
-  - React 19 is bundled with Next.js 16
-  - create-next-app doesn't allow spaces or caps in project names - must use subdirectory approach
-  - Logo placed at public/DO_CODE_LAB_LOGO_NO_TEXT.png as specified in PRD
+  - DROP order: time_entries → projects → clients (or use CASCADE on each DROP)
+  - Re-declare trigger function with CREATE OR REPLACE for idempotency
+  - No trigger on rates table — immutable by design
+  - source_observation_id is UUID with NO FK — observations table comes in run #2
 ---
 
-## Iteration 2 - Set up Supabase client and environment variables
-- What was implemented:
-  - Created .env.example with Supabase URL and anon key template
-  - Created .env.local for local development (gitignored)
-  - Created src/lib/supabase.ts with typed Supabase client
-  - Created src/types/database.ts with full TypeScript types matching PRD schema
-  - Updated .gitignore to track .env.example but ignore .env.local
-- Files changed:
-  - .env.example (new)
-  - .env.local (new, gitignored)
-  - src/lib/supabase.ts (new)
-  - src/types/database.ts (new)
-  - .gitignore (updated)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - @supabase/supabase-js was already installed in package.json
-  - Database types include Row, Insert, Update variants for each table
-  - Convenience types (Client, Project, TimeEntry) exported for easier use
-  - Next.js build confirms .env.local is loaded (shows "Environments: .env.local")
 ---
 
-## Iteration 3 - Run database schema migration (create all 3 tables + indexes)
-- What was implemented:
-  - Created supabase/migrations/001_initial_schema.sql with full schema
-  - All 3 tables: clients, projects, time_entries
-  - All 3 indexes: idx_time_entries_project, idx_time_entries_start, idx_projects_client
-  - Added updated_at triggers for automatic timestamp updates
-  - Enabled RLS with permissive policies (single-user MVP, no auth)
-  - Created supabase/README.md with setup instructions
-- Files changed:
-  - supabase/migrations/001_initial_schema.sql (new)
-  - supabase/README.md (new)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Migration file uses IF NOT EXISTS for idempotent runs
-  - RLS must be enabled with permissive policies for anon access
-  - Migration is meant to be run in Supabase SQL Editor (not automated CLI)
-  - Build and lint pass - project remains in healthy state
----
+## Roadmap (For Future Context, Not This Run)
 
-## Iteration 4 - Place DO Code Lab logo in public/ and generate favicon
-- What was implemented:
-  - Logo already existed at public/DO_CODE_LAB_LOGO_NO_TEXT.png (from iteration 1)
-  - Generated 32x32 icon.png from logo using macOS sips
-  - Generated 180x180 apple-icon.png for Apple touch devices
-  - Removed default favicon.ico
-  - Updated layout.tsx metadata title to "In DO Time"
-  - Updated layout.tsx metadata description to "Multi-client time tracking for DO Code Lab"
-- Files changed:
-  - src/app/icon.png (new - generated from logo)
-  - src/app/apple-icon.png (new - generated from logo)
-  - src/app/favicon.ico (deleted)
-  - src/app/layout.tsx (updated metadata)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Next.js App Router auto-detects icon.png and apple-icon.png in app/ directory
-  - macOS sips is available for image conversion when ImageMagick isn't installed
-  - Build output shows /icon.png and /apple-icon.png as static routes when properly placed
-  - Favicon should be in app/ dir not public/ for App Router convention
----
+### Ralph Run #2 — Capture Layer
+Add the observation and journaling foundation:
+- `observations` table (timestamped events, attributable to trail/project, with `review_state`)
+- `journal_entries` table (one or more per day, `kind` field for reflection/intention/freeform)
+- `open_loops` table (tagged items from journal entries that persist across days)
+- Manual journal entry UI (the evening reflection / "trail report")
+- Observation review queue UI (triage during evening reflection)
+- Tag parser (extract `@tomorrow`, `#stuck`, `>trail-slug` from journal prose into `parsed_tags` JSONB)
+- Add FK constraint from `time_entries.source_observation_id` to `observations.id`
 
-## Iteration 5 - Create app layout with branded header (logo + "In DO Time" + nav)
-- What was implemented:
-  - Updated globals.css with DO Code Lab brand colors using TailwindCSS v4 @theme inline
-  - Configured all brand colors: primary, primary-dark, primary-light, surface, accent, text, border, etc.
-  - Added design tokens for border radius (button: 8px, card: 12px) and card shadows
-  - Created Header component with DO Code Lab logo (40px), "In DO Time" title, and nav links
-  - Navigation includes: Dashboard, Time Log, Reports, Clients with active state styling
-  - Updated layout.tsx to use Playfair Display (headings) and Inter (body) fonts from Google Fonts
-  - Layout includes Header component and main content area with max-w-7xl container
-  - Updated page.tsx with simple placeholder using brand styling
-- Files changed:
-  - src/app/globals.css (updated with brand colors and design tokens)
-  - src/components/Header.tsx (new)
-  - src/app/layout.tsx (updated with fonts and Header)
-  - src/app/page.tsx (updated with placeholder content)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - TailwindCSS v4 uses @theme inline block for custom CSS variables
-  - Font variables are set via next/font/google and consumed in CSS via var(--font-name)
-  - Header uses 'use client' for usePathname hook to highlight active nav item
-  - Brand colors accessible as Tailwind classes like bg-primary, text-primary-dark, etc.
-  - Components go in src/components/ directory with @/components/* imports
----
+### Ralph Run #3 — Briefing & Skill Ingestion
+- Morning briefing view ("today's trail map") computed from journal + observations + open loops + active timers
+- `POST /api/observe` endpoint for AI tool skills to submit observations
+- Skill-to-time-entry propagation flow (manual confirmation for billable trails, optional auto for personal)
+- DObot revival, eventual integration as briefing composer
 
-## Iteration 6 - Build Client CRUD (add, edit, archive clients with name, hourly rate, color)
-- What was implemented:
-  - Created /clients page with full CRUD functionality
-  - List view shows all active clients in card-based grid layout (3 columns desktop, responsive)
-  - Each card displays: name, hourly rate, color indicator, edit/archive buttons
-  - Add client modal with form: name (required), hourly rate, color picker (8 preset colors)
-  - Edit client functionality reuses same modal
-  - Archive/restore functionality with confirmation dialog
-  - Toggle to show/hide archived clients
-  - Error handling with user-friendly messages
-  - Loading states during data fetch
-- Files changed:
-  - src/app/clients/page.tsx (new - full Client CRUD page)
-  - src/types/database.ts (updated - added Relationships property for Supabase SDK v2 compatibility)
-  - src/lib/supabase.ts (updated - lazy initialization pattern to avoid build-time errors)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Supabase SDK v2 requires Relationships property in each table definition for TypeScript
-  - Supabase client must use lazy initialization to avoid build errors when env vars missing
-  - ESLint rule react-hooks/set-state-in-effect is VERY strict - cannot call setState synchronously in useEffect body
-  - Workaround: call setState only in .then() callbacks or event handlers, not at effect start
-  - Use refreshTrigger pattern to trigger re-fetches: increment counter + add to useEffect deps
-  - Client colors stored as hex strings in database, rendered with inline styles
----
+### Ralph Run #4+ — Polish, Mobile, Edge Cases
+- README rewrite reflecting full v2 product
+- Per-entry billable override (`is_billable` on time entries)
+- Possible migration of `parsed_tags` JSONB to normalized tags table if tag management UI is wanted
+- Mobile polish
 
-## Iteration 7 - Build Project CRUD (add, edit, archive projects under clients with optional rate override)
-- What was implemented:
-  - Created /projects page with full CRUD functionality
-  - List view shows all projects in card-based grid layout with client color border
-  - Each card displays: project name, client name, effective hourly rate, edit/archive buttons
-  - Add project modal with form: client selection (dropdown), name, optional hourly rate override
-  - Edit project functionality reuses same modal
-  - Archive/restore functionality with confirmation dialog
-  - Toggle to show/hide archived projects
-  - Shows warning when no clients exist (can't create projects without a client)
-  - Displays "(override)" indicator when project uses custom rate vs client rate
-  - Added Projects link to Header navigation
-- Files changed:
-  - src/app/projects/page.tsx (new - full Project CRUD page)
-  - src/components/Header.tsx (updated - added Projects nav link)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Supabase select with relations: `.select('*, clients(id, name, color, hourly_rate)')`
-  - Relations come back as nested object (project.clients.name)
-  - Use Promise.all to load multiple resources (projects + clients) in parallel
-  - getEffectiveRate helper function determines if override or client rate applies
-  - Disable "Add Project" button when no clients exist (required foreign key)
----
-
-## Iteration 8 - Create timer engine: start timer → creates time_entry with is_running=true
-- What was implemented:
-  - Created src/lib/timer.ts with core timer engine functions
-  - startTimer(projectId, notes?) → creates time_entry with is_running=true, start_time=now
-  - getRunningTimers() → fetches all time entries where is_running=true
-  - getRunningTimerForProject(projectId) → get running timer for specific project
-  - hasRunningTimer(projectId) → boolean check if project has running timer
-  - Helper utilities: calculateElapsedSeconds, formatDuration, calculateRunningCost, formatCurrency
-- Files changed:
-  - src/lib/timer.ts (new - timer engine core)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Timer engine is a pure TypeScript lib file (not a React component)
-  - Uses getSupabase() pattern for lazy client initialization
-  - TimeEntryInsert type matches database schema exactly
-  - PGRST116 error code means "no rows found" - expected when checking for running timers
-  - formatDuration returns HH:MM:SS format, padded with zeros
-  - Timer state persists in Supabase - can survive browser refresh
----
-
-## Iteration 9 - Stop timer → sets end_time, calculates duration_seconds, sets is_running=false
-- What was implemented:
-  - Added stopTimer(timeEntryId) function to timer engine
-  - Fetches current entry to verify it exists and is_running=true
-  - Calculates duration_seconds using existing calculateElapsedSeconds helper
-  - Updates entry with end_time (ISO string), duration_seconds, is_running=false
-  - Added convenience function stopTimerForProject(projectId) that finds and stops the running timer
-  - Both functions return TimerResult with success/error states
-- Files changed:
-  - src/lib/timer.ts (added stopTimer and stopTimerForProject functions)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Stop timer must first fetch entry to get start_time for duration calculation
-  - Validation checks: entry must exist AND is_running must be true
-  - Two stop variants: by timeEntryId (direct) and by projectId (convenience)
-  - Pattern: fetch first, validate, then update - prevents race conditions
----
-
-## Iteration 10 - Pause/resume functionality (stop current entry, start new one on resume)
-- What was implemented:
-  - Added pauseTimer(projectId) → delegates to stopTimerForProject (stops current entry)
-  - Added resumeTimer(projectId, copyNotes?) → starts new entry, optionally copies notes from last entry
-  - Added getLastEntryForProject(projectId) → gets most recent entry for a project
-  - Added getPausedTimerForProject(projectId) → checks if project has a "paused" state (stopped within 24h)
-  - Added getTimerStateForProject(projectId) → returns 'running' | 'paused' | 'stopped' with entry
-  - Added TimerState type export
-- Files changed:
-  - src/lib/timer.ts (added 5 new functions + 1 type)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Pause is semantically distinct from stop, but uses same underlying mechanism
-  - "Paused" state determined by having a stopped entry within 24 hours
-  - copyNotes=true by default on resume to continue work context
-  - TimerState type enables UI to show different button states per project
-  - Pattern: pause/resume creates separate time entries (not a single paused entry)
----
-
-## Iteration 11 - Support multiple simultaneous running timers (one per project)
-- What was implemented:
-  - Added validation to startTimer() to prevent multiple running timers per project
-  - startTimer now checks getRunningTimerForProject() before creating new entry
-  - Added RunningTimerWithProject interface for dashboard display
-  - Added getAllRunningTimersWithProjects() - fetches all running timers with nested project + client data
-  - Added getRunningTimerCount() - quick count for dashboard indicators
-  - Uses Supabase nested select: time_entries → projects → clients
-  - Returns effectiveRate (project override or client rate) for each running timer
-- Files changed:
-  - src/lib/timer.ts (added validation to startTimer, added 3 new exports)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Multiple simultaneous timers already worked via getRunningTimers() returning all
-  - Key constraint "one per project" enforced by validation in startTimer and resumeTimer
-  - Supabase nested joins: `projects!inner(..., clients!inner(...))` for multi-level relations
-  - eslint @typescript-eslint/no-explicit-any needed for complex Supabase return types
-  - RunningTimerWithProject provides dashboard-ready structure with effectiveRate pre-calculated
----
-
-## Iteration 12 - Timer state persists in Supabase (survives browser close/refresh)
-- What was implemented:
-  - Verified existing timer engine already persists all state to Supabase
-  - startTimer() creates time_entry rows with is_running=true in Supabase
-  - stopTimer() updates rows with end_time, duration_seconds, is_running=false
-  - getRunningTimers() and getAllRunningTimersWithProjects() fetch from Supabase
-  - No code changes needed - persistence was inherent to the Supabase-based design
-- Files changed:
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Timer persistence was already built into the architecture from iteration 8
-  - All timer functions use getSupabase() and perform CRUD on time_entries table
-  - Browser close/refresh survives because state is in database, not memory
-  - This was essentially a verification task - the design was correct from the start
----
-
-## Iteration 13 - On app load, detect any is_running=true entries and resume display
-- What was implemented:
-  - Created src/hooks/useRunningTimers.ts - React hook that detects running timers on mount
-  - Hook calls getAllRunningTimersWithProjects() on mount and ticks elapsed seconds every 1s
-  - Returns timers with live elapsedSeconds, loading/error states, refresh callback
-  - Created src/components/ActiveTimers.tsx - displays running timers with live ticking UI
-  - Each timer card shows: client name, project name, elapsed time (HH:MM:SS), running cost
-  - Green pulsing indicator for running state, Pause and Stop buttons
-  - Cards styled with client color border, amber accent for timer display
-  - Updated src/app/page.tsx to include ActiveTimers component at top of dashboard
-  - Component renders nothing when no timers are running (clean empty state)
-- Files changed:
-  - src/hooks/useRunningTimers.ts (new)
-  - src/components/ActiveTimers.tsx (new)
-  - src/app/page.tsx (updated)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - useRunningTimers hook uses useRef for interval to avoid stale closure issues
-  - Interval only runs when timers.length > 0, cleaned up when timers empty
-  - calculateElapsedSeconds recomputes from start_time each tick (avoids drift)
-  - ActiveTimers returns null when no running timers (doesn't render empty container)
-  - Pattern: 'use client' directive needed in hook file for useState/useEffect
-  - Hooks directory created at src/hooks/ for custom React hooks
-  - Next.js allows mixing server (page.tsx) and client (ActiveTimers) components seamlessly
----
-
-## Iteration 14 - Card-based dashboard showing all active projects with timer controls
-- What was implemented:
-  - Created src/components/Dashboard.tsx - full card-based dashboard component
-  - Fetches all active projects with client info from Supabase
-  - Detects running timers and shows live ticking elapsed time + running cost
-  - Detects paused projects (stopped within 24h) and shows "Resume" button
-  - Start/Pause/Stop/Resume buttons per project card with loading states
-  - Green pulsing indicator for running timers, amber dot for paused
-  - Cards styled with client color border, responsive 3-col grid
-  - Running timer count summary bar at top
-  - Empty state with links to Clients/Projects pages
-  - Replaced old placeholder page.tsx with Dashboard component
-  - Removed dependency on standalone ActiveTimers component (Dashboard is now unified)
-- Files changed:
-  - src/components/Dashboard.tsx (new - full dashboard component)
-  - src/app/page.tsx (updated - now renders Dashboard instead of placeholder + ActiveTimers)
-- Learnings for future iterations:
-  - Dashboard replaces ActiveTimers on home page - shows ALL projects, not just running ones
-  - ActiveTimers.tsx still exists and could be reused elsewhere if needed
-  - getPausedTimerForProject makes individual queries per project - may be slow with many projects
-  - Timer map (Map<string, TimerDisplayInfo>) is efficient for lookup by projectId
-  - setInterval with Map state update works for multi-timer ticking
-  - Supabase nested select with !inner ensures only projects with valid clients are returned
-  - eslint @typescript-eslint/no-explicit-any needed for Supabase join return types
----
-
-## Iteration 15 - Quick-start: click a project card to begin timing + mark already-done Phase 3 tasks
-- What was implemented:
-  - Made project cards clickable for quick-start: clicking an idle card starts timer, clicking paused card resumes
-  - Added stopPropagation on controls div to prevent card click from firing when using buttons
-  - Added cursor-pointer class for clickable cards (idle + paused states)
-  - Running cards are not clickable (they already have dedicated Pause/Stop buttons)
-  - Marked 4 Phase 3 tasks as complete that were already implemented in Iteration 14:
-    - Each card: client name, project name, live elapsed time (ticking), running cost
-    - Start/Stop/Pause buttons per card
-    - Green pulsing indicator for running timers, amber accent for active states
-    - Responsive layout: 3 columns desktop, 1 column mobile
-- Files changed:
-  - src/components/Dashboard.tsx (added card click handler + stopPropagation on controls)
-  - PRD.md (marked 5 Phase 3 tasks complete)
-- Learnings for future iterations:
-  - Many Phase 3 tasks were already implemented during Iteration 14 (card-based dashboard)
-  - Always check existing implementation before starting new work
-  - stopPropagation on button container prevents card-level click from firing on button clicks
-  - canQuickStart flag prevents accidental double-starts when a timer is already running
----
-
-## Iteration 16 - "Recent Activity" section below cards showing today's logged entries
-- What was implemented:
-  - Added RecentEntry interface for typed recent activity data
-  - In loadData, fetches today's completed time entries (is_running=false, start_time >= midnight today)
-  - Joins time_entries → projects → clients for full context
-  - "Recent Activity" section renders below project cards grid
-  - Each entry shows: client color dot, project name, notes, client name, time range, duration (HH:MM:SS), cost
-  - Entry count summary: "Today: N entries"
-  - Styled with rounded card container, dividers between entries, truncation for long text
-  - Section only renders when there are entries (clean empty state)
-  - Recent entries refresh after every timer start/stop/pause/resume action
-- Files changed:
-  - src/components/Dashboard.tsx (added RecentEntry interface, fetch logic, JSX section)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Supabase .gte() filter works with ISO date strings for date range queries
-  - todayStart.setHours(0,0,0,0) gives local midnight - consistent with user expectations
-  - Nested Supabase select for time_entries → projects → clients: `projects!inner(name, ..., clients!inner(...))`
-  - toLocaleTimeString with {hour: 'numeric', minute: '2-digit'} gives clean time display
-  - Recent Activity auto-refreshes via loadData() being called after every timer action
----
-
-## Iteration 17 - Today's summary: total hours + total earnings
-- What was implemented:
-  - Added "Today's Summary" card at top of dashboard showing total hours and total earnings
-  - Aggregates completed entries (recentEntries) + currently running timers for real-time totals
-  - Running timer seconds tick live via the existing interval, keeping summary always current
-  - Styled with primary-light background, brand colors, monospace numbers
-  - Summary only appears when there's activity (totalSeconds > 0)
-- Files changed:
-  - src/components/Dashboard.tsx (added summary calculation logic + JSX section)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - recentEntries already has all data needed for completed time totals (duration_seconds + effectiveRate)
-  - Running timer totals computed by iterating runningTimers Map and looking up project rates
-  - calculateRunningCost(seconds, rate) reused for both completed and running calculations
-  - Summary updates live because runningTimers state updates every second via setInterval
-  - Used &apos; for apostrophe in JSX to satisfy ESLint react/no-unescaped-entities
----
-
-## Iteration 18 - Time log page: chronological list of all time entries
-- What was implemented:
-  - Created /time-log page with full chronological listing of all time entries
-  - Entries fetched from Supabase with nested project + client data
-  - Grouped by date with date headers showing daily totals (hours + earnings)
-  - Each entry displays: client color dot, project name, client name, start/end time, duration, cost
-  - Running timers shown with green pulsing "Running" badge and "—" for duration/cost
-  - Manual entries marked with "Manual" badge
-  - Notes displayed inline when present
-  - Empty state with link back to Dashboard
-  - Loading and error states with retry button
-  - Entry count shown in page subtitle
-- Files changed:
-  - src/app/time-log/page.tsx (new - full time log page)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Reused same Supabase nested select pattern: time_entries → projects!inner → clients!inner
-  - Grouped entries by date using reduce with toLocaleDateString as key
-  - Follows same UI patterns as Dashboard: rounded-card, divide-y, shadow-card
-  - Running entries show "Running" instead of end time/duration/cost
-  - Daily totals calculated per group for quick at-a-glance summary
-  - Header already had /time-log nav link from iteration 7
----
-
-## Iteration 19 - Filter by client, project, and date range
-- What was implemented:
-  - Added filter bar to Time Log page with Client dropdown, Project dropdown, From date, and To date
-  - Client and Project dropdowns populated from Supabase on mount
-  - Project dropdown filters by selected client (shows only relevant projects)
-  - Selecting a client clears project selection to avoid mismatches
-  - Date range uses native HTML date inputs with gte/lte Supabase filters
-  - Filters applied at query level (Supabase) for efficiency, not client-side
-  - "Clear" button appears only when filters are active
-  - Entry count shows "(filtered)" when filters are active
-  - Empty state shows "No matching entries" with clear filters link when filtered
-  - Fixed pre-existing ESLint issue: replaced `<a>` with `<Link>` from next/link
-  - Added project_id and client_id to TimeLogEntry interface for filter support
-- Files changed:
-  - src/app/time-log/page.tsx (updated - added filter UI and query logic)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Supabase .gte() and .lte() work directly on timestamptz columns with ISO strings
-  - For client filtering through a relation: `.eq('projects.client_id', clientId)` with !inner join
-  - Project filter uses direct `.eq('project_id', id)` since it's on the time_entries table
-  - When selecting client, clear project selection to avoid stale filter state
-  - loadEntries depends on filter state via useCallback deps array - auto-refetches on filter change
-  - End date needs setHours(23,59,59,999) to include entries on that day
-  - `next/link` Link component required instead of `<a>` for internal navigation (ESLint rule)
----
-
-## Iteration 20 - Each entry: project, client, start/end time, duration, calculated cost
-- What was implemented:
-  - Verified this was already fully implemented in Iteration 18 (Time Log page)
-  - Each entry shows: project name, client name, start/end time, duration (HH:MM:SS), calculated cost
-  - Running entries show "Running" badge and "—" for duration/cost
-  - No code changes needed - just marked the PRD task complete
-- Files changed:
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Some PRD tasks overlap with earlier implementations - always check existing code first
-  - The time-log/page.tsx already had all required fields from the initial implementation
-  - Build and typecheck both pass cleanly
----
-
-## Iteration 21 - Edit entries (adjust start/end times for corrections)
-- What was implemented:
-  - Added updateTimeEntry() function to src/lib/timer.ts for editing time entries
-  - Auto-recalculates duration_seconds when start_time or end_time changes
-  - Added edit modal to Time Log page with datetime-local inputs for start/end times
-  - Edit modal also allows editing notes
-  - Pencil icon edit button on each completed entry row (not shown for running entries)
-  - Validation: end time must be after start time
-  - Loading state on save button, error display in modal
-  - Entry list refreshes after successful edit
-- Files changed:
-  - src/lib/timer.ts (added updateTimeEntry function, imported TimeEntryUpdate type)
-  - src/app/time-log/page.tsx (added edit state, modal, edit button, save handler)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - datetime-local input needs YYYY-MM-DDTHH:MM format, not ISO string
-  - toDatetimeLocal helper converts ISO to local datetime format using local timezone
-  - Edit button hidden for running entries (they should be stopped first)
-  - updateTimeEntry smartly recalculates duration when either time changes
-  - Modal uses fixed inset-0 z-50 with black/50 backdrop for overlay pattern
----
-
-## Iteration 22 - Delete entries with confirmation dialog
-- What was implemented:
-  - Added deleteTimeEntry() function to src/lib/timer.ts
-  - Prevents deleting running timers (must stop first)
-  - Added trash icon delete button next to edit button on each completed entry row
-  - Confirmation dialog shows entry details (project, client, date, duration, cost) before deleting
-  - Loading state on delete button, list refreshes after successful delete
-- Files changed:
-  - src/lib/timer.ts (added deleteTimeEntry function)
-  - src/app/time-log/page.tsx (added delete state, handler, button, confirmation dialog)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Delete button and edit button now wrapped in a flex container with gap-1 for consistent spacing
-  - Confirmation dialog uses red color scheme (bg-red-600) to indicate destructive action
-  - Delete blocked for running entries same as edit - consistent UX pattern
-  - Supabase .delete().eq('id', id) returns no data by default, just error on failure
-  - Reused same modal overlay pattern: fixed inset-0 z-50 bg-black/50
----
-
-## Iteration 23 - Manual time entry option (add time after the fact)
-- What was implemented:
-  - Added createManualEntry() function to src/lib/timer.ts
-  - Creates time_entry with is_manual=true, is_running=false, pre-calculated duration
-  - Validates end time > start time before insert
-  - Added "+ Manual Entry" button in Time Log page header
-  - Added manual entry modal with project dropdown, start/end datetime pickers, notes field
-  - Form validation: project required, both times required, end must be after start
-  - Entry list refreshes after successful save
-  - Modal reuses existing project list from filter dropdowns (loaded on mount)
-- Files changed:
-  - src/lib/timer.ts (added createManualEntry function)
-  - src/app/time-log/page.tsx (added manual entry button, state, modal, handler)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - createManualEntry is simpler than startTimer - no is_running checks needed
-  - Reused projects list from filter dropdown state - no additional Supabase query needed
-  - Manual entries get is_manual=true flag, already displayed with "Manual" badge in time log
-  - Same modal overlay pattern: fixed inset-0 z-50 bg-black/50
-  - datetime-local inputs work well for manual entry (user picks exact date+time)
----
-
-## Iteration 24 - Reports page: summary view grouped by client → project
-- What was implemented:
-  - Created /reports page with summary view grouped by client → project
-  - Fetches all completed time entries (is_running=false) with nested project + client data
-  - Groups entries into ClientSummary → ProjectSummary hierarchy with totals
-  - Grand totals bar showing total time, total earned, entry count, client count
-  - Each client card: color dot, name, entry/project count, total time, total earned
-  - Collapsible client sections with chevron toggle (expanded by default)
-  - Project breakdown within each client: name, entry count, time, cost
-  - Sorted by total cost descending (highest-earning clients/projects first)
-  - Filter bar: Client dropdown, From date, To date with Clear button
-  - Filters applied at Supabase query level for efficiency
-  - Loading, error, and empty states matching existing patterns
-- Files changed:
-  - src/app/reports/page.tsx (new - full reports page)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Reused same Supabase nested select pattern: time_entries → projects!inner → clients!inner
-  - Map-based grouping (Map<clientId, ClientSummary>) is clean for multi-level aggregation
-  - Collapsible sections use simple Record<string, boolean> state for toggle tracking
-  - Reports only show completed entries (is_running=false) - running timers excluded
-  - Grand totals computed from clientSummaries array with reduce
-  - Header already had /reports nav link from iteration 5
----
-
-## Iteration 25 - CSV export filtered by client + date range
-- What was implemented:
-  - Created src/lib/csv.ts with CSV generation, download, and filename utilities
-  - generateCSV() creates CSV with columns: Client, Project, Date, Start/End Time, Duration, Hours (Decimal), Hourly Rate, Cost, Notes, Type
-  - escapeCSV() handles commas, quotes, and newlines in field values
-  - downloadCSV() triggers browser file download via Blob URL
-  - generateCSVFilename() creates descriptive filename based on active filters
-  - Added "Export CSV" button to Reports page header (green primary button with download icon)
-  - Button only appears when there are entries to export
-  - CSV export uses the same filtered data as the on-screen report (same client + date range filters)
-  - Added end_time, notes, is_manual fields to ReportEntry interface and Supabase query
-  - Stored reportEntries in state for CSV generation
-- Files changed:
-  - src/lib/csv.ts (new - CSV generation and download utilities)
-  - src/app/reports/page.tsx (updated - added Export CSV button, expanded query fields, stored entries)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - CSV export uses native JS Blob + URL.createObjectURL for browser download (no library needed)
-  - Filename includes filter context (client name, date range) for easy identification
-  - ReportEntry interface needed expansion (end_time, notes, is_manual) for complete CSV rows
-  - Export button conditionally rendered based on reportEntries.length > 0
-  - Hours (Decimal) column useful for invoicing (e.g., 1.50 = 1h 30m)
----
-
-## Iteration 26 - Include DO Code Lab logo in report header
-- What was implemented:
-  - Added DO Code Lab logo (48x48px) to the Reports page header, next to the "Reports" title
-  - Used Next.js Image component for optimized image loading
-  - Logo and title wrapped in flex container with gap-3 for clean alignment
-  - Logo uses flex-shrink-0 to prevent shrinking on small screens
-- Files changed:
-  - src/app/reports/page.tsx (added Image import, added logo to header)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Logo is at public/DO_CODE_LAB_LOGO_NO_TEXT.png (placed in iteration 1)
-  - Next.js Image component requires explicit width/height props
-  - PRD specifies larger logo for report exports vs nav (32-40px nav, larger for reports)
-  - 48px works well as a report header size - prominent but not overwhelming
----
-
-## Iteration 27 - Responsive design pass (mobile + desktop)
-- What was implemented:
-  - Time Log page: moved edit/delete buttons to inline text on mobile (hidden icon buttons, show text buttons below entry), notes shown on separate line on mobile
-  - Reports page: reduced padding on client headers and project breakdowns for mobile (px-3, pl-8 vs px-5, pl-12), smaller font sizes for monospace values on mobile
-  - Reports page: hide "Time"/"Earned" sub-labels on mobile to save space, truncate long client/project names
-  - Clients page: added p-4 padding on modal overlay for mobile (prevents edge-to-edge modal)
-  - Projects page: same modal overlay padding fix
-  - Dashboard: recent activity entries have tighter gap/padding on mobile, notes hidden inline on small screens, smaller duration text on mobile
-  - Dashboard: timer control buttons slightly taller (py-2.5) on mobile for better touch targets
-  - Header: brand text slightly smaller (text-lg) on mobile, (text-xl) on sm+
-  - Layout: reduced vertical padding on mobile (py-6 vs py-8 on sm+)
-- Files changed:
-  - src/app/time-log/page.tsx (mobile action buttons, notes layout)
-  - src/app/reports/page.tsx (tighter spacing, responsive font sizes)
-  - src/app/clients/page.tsx (modal padding)
-  - src/app/projects/page.tsx (modal padding)
-  - src/components/Dashboard.tsx (recent activity, touch targets)
-  - src/components/Header.tsx (brand text size)
-  - src/app/layout.tsx (mobile padding)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Most of the responsive foundation was already solid (grid-cols responsive, flex-col/row patterns)
-  - Main issues were: overly generous padding on mobile, icon buttons too small for touch, notes causing overflow
-  - Pattern: hidden sm:flex for desktop-only elements, sm:hidden for mobile-only alternatives
-  - Touch targets should be at least py-2.5 (40px total height) on mobile
-  - Modals always need p-4 on the backdrop for safe mobile padding
----
-
-## Iteration 28 - Empty states with DO Code Lab logo watermark
-- What was implemented:
-  - Created reusable EmptyState component (src/components/EmptyState.tsx) with DO Code Lab logo watermark
-  - Logo displayed at 64x64px with 20% opacity for subtle watermark effect
-  - Updated 5 empty states across the app to use the new component:
-    - Clients page: "No clients found" / "No active clients"
-    - Projects page: "No projects found" / "No active projects"
-    - Time Log page: "No time entries yet" / "No matching entries" (with filter clear button / dashboard link)
-    - Reports page: "No completed time entries yet" / "No matching entries" (with filter clear button)
-    - Dashboard: "No active projects" (with links to Clients/Projects pages)
-  - All empty states now centered with logo watermark, title, and descriptive message
-- Files changed:
-  - src/components/EmptyState.tsx (new - reusable empty state component)
-  - src/app/clients/page.tsx (updated - import + use EmptyState)
-  - src/app/projects/page.tsx (updated - import + use EmptyState)
-  - src/app/time-log/page.tsx (updated - import + use EmptyState)
-  - src/app/reports/page.tsx (updated - import + use EmptyState)
-  - src/components/Dashboard.tsx (updated - import + use EmptyState)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Reusable EmptyState component with title + children pattern is clean and DRY
-  - Image with alt="" for decorative images (logo watermark is not informational)
-  - opacity-20 gives a nice subtle watermark effect without being distracting
-  - EmptyState accepts ReactNode children so it can contain links, buttons, or plain text
-  - All 5 pages had slightly different empty state patterns - component normalizes them
----
-
-## Iteration 29 - Loading states and error handling
-- What was implemented:
-  - Replaced plain "Loading..." text with skeleton loaders on 4 pages/components:
-    - Clients page: 3-card skeleton grid with placeholder shapes
-    - Projects page: 3-card skeleton grid matching card layout
-    - Dashboard: 6-card skeleton grid matching timer card structure
-    - Reports page: full-page skeleton with header, filters, totals, and client card placeholders
-  - Added form submit button loading states:
-    - Clients page: "Saving..." with disabled state during create/update
-    - Projects page: "Saving..." with disabled state during create/update
-  - Added archive/restore button loading states:
-    - Clients page: "Processing..." with disabled state per client (archivingId tracking)
-    - Projects page: "Processing..." with disabled state per project (archivingId tracking)
-  - Added Dashboard timer button text feedback:
-    - "Starting...", "Pausing...", "Stopping...", "Resuming..." text + disabled:cursor-not-allowed
-  - Created Next.js root-level loading.tsx with spinner animation
-  - Created Next.js root-level error.tsx boundary with error message and "Try again" button
-- Files changed:
-  - src/app/clients/page.tsx (skeleton loader, saving state, archivingId state)
-  - src/app/projects/page.tsx (skeleton loader, saving state, archivingId state)
-  - src/components/Dashboard.tsx (skeleton loader, button text feedback)
-  - src/app/reports/page.tsx (skeleton loader)
-  - src/app/loading.tsx (new - root loading boundary)
-  - src/app/error.tsx (new - root error boundary)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Skeleton loaders should match the shape of the actual content (cards, text lines, etc.)
-  - animate-pulse on a parent container applies to all children
-  - Button loading pattern: track saving state, wrap async in try/finally, disable + change text
-  - archivingId pattern better than boolean for tracking which item is processing in a list
-  - Next.js error.tsx must be 'use client' and receives error + reset props
-  - Next.js loading.tsx is automatically shown during route transitions (App Router feature)
-  - Time Log page already had excellent loading/error handling from iteration 18 - used as reference
----
-
-## Iteration 30 - Seed B.B. (GA Gymnastics State Meets) and Mariah (Evermore Equine) as default clients
-- What was implemented:
-  - Created SQL seed migration (002_seed_default_clients.sql) with idempotent INSERT statements
-  - B.B. client: hourly_rate $30, blue color (#2563EB), project "GA Gymnastics State Meets"
-  - Mariah client: hourly_rate $45, purple color (#7C3AED), project "Evermore Equine"
-  - Created src/lib/seed.ts with seedDefaultClients() function for client-side seeding
-  - Seed function checks for existing clients before inserting (idempotent)
-  - Integrated auto-seeding into Dashboard: if no projects exist on first load, seeds defaults
-  - Dashboard re-fetches projects after successful seed and renders immediately
-- Files changed:
-  - supabase/migrations/002_seed_default_clients.sql (new - SQL seed migration)
-  - src/lib/seed.ts (new - client-side seed utility)
-  - src/components/Dashboard.tsx (updated - auto-seed on first load)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - SQL WHERE NOT EXISTS pattern makes seed migrations idempotent (safe to re-run)
-  - Client-side seed function is useful for first-time app setup without SQL access
-  - Dashboard auto-seed triggers only when projectData.length === 0 (doesn't re-seed after deletions if clients still exist)
-  - Seed data rates/colors can be adjusted - these are reasonable defaults based on PRD UI mockup
-  - Two approaches: SQL migration for DB-level seed, JS function for app-level seed
----
-
-## Iteration 31 - Deploy to Vercel
-- What was implemented:
-  - Installed Vercel CLI globally (npm install -g vercel)
-  - Already logged in as davisopp13 — no auth setup needed
-  - Deployed with `vercel --yes --name in-do-time` (directory name had spaces, needed explicit name)
-  - Build succeeded on Vercel (Turbo Build Machine, 30 cores)
-  - Production URL: https://in-do-time.vercel.app
-  - Aliased automatically to production
-  - .vercel directory created for project linking
-  - Note: Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) need to be added via Vercel dashboard or `vercel env add`
-- Files changed:
-  - .vercel/ (created by Vercel CLI for project linking)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Vercel CLI --name flag is deprecated but still works to override directory name
-  - Directory names with spaces cause Vercel project name errors — use explicit name
-  - `vercel --yes` accepts all defaults (framework detection, build command, output dir)
-  - Vercel auto-detects Next.js and configures build correctly
-  - Environment variables must be added separately via `vercel env add` or Vercel dashboard
-  - Production URL pattern: https://{project-name}.vercel.app
-  - Already logged in users can deploy immediately without `vercel login`
----
-
-## Iteration 32 - Test full loop: add client → start timer → stop → view log → export CSV
-- What was implemented:
-  - Set up Vitest test framework with jsdom environment
-  - Created vitest.config.ts with path aliases matching tsconfig
-  - Added "test": "vitest run" script to package.json
-  - Created src/__tests__/full-loop.test.ts with 29 tests covering:
-    - Timer utilities: formatDuration, calculateElapsedSeconds, calculateRunningCost, formatCurrency
-    - CSV generation: headers, data rows, manual entries, empty notes, CSV escaping, multiple entries
-    - CSV filename generation: base filename, with client, with dates, with date range, all filters
-    - Full end-to-end flow: add client → add project → start timer → stop timer → view log → export CSV
-    - Multi-client export with different rates
-    - Timer state transitions (running → stopped with correct duration calculation)
-  - All 29 tests pass, typecheck passes, build succeeds
-- Files changed:
-  - vitest.config.ts (new - Vitest configuration)
-  - package.json (updated - added test script, added dev dependencies)
-  - src/__tests__/full-loop.test.ts (new - 29 comprehensive tests)
-  - PRD.md (marked task complete)
-- Learnings for future iterations:
-  - Vitest v4 works great with Next.js 16 - no special configuration needed beyond path aliases
-  - jsdom environment needed for any DOM-related testing
-  - Pure utility functions (formatDuration, calculateRunningCost, etc.) are easily testable without mocks
-  - CSV generation is fully testable as pure functions - no Supabase dependency
-  - Mock Supabase with vi.doMock for integration tests that need database simulation
-  - Test both the individual utilities AND the complete flow to ensure they work together
----
-
-## Iteration 33 - Update logo assets and references
-- What was implemented:
-  - Switched from missing DO_CODE_LAB_LOGO_NO_TEXT.png to existing DO_CODE_LAB_LOGO.png
-  - Updated Image component dimensions to match new logo's 3:2 aspect ratio (avoid distortion)
-  - Regenerated icon.png and apple-icon.png using center-crop of new high-res logo
-  - Updated PRD.md to reflect correct logo filename
-- Files changed:
-  - src/components/Header.tsx
-  - src/components/EmptyState.tsx
-  - src/app/reports/page.tsx
-  - src/app/icon.png
-  - src/app/apple-icon.png
-  - PRD.md
-- Learnings for future iterations:
-  - Always check image aspect ratios when replacing assets to prevent distortion
-  - sips is excellent for scripted image manipulation (crop/resize)
-  - Next.js Image component enforces aspect ratio via width/height props
----
-
-## Project Completion verification
-- What was implemented:
-  - Verified all technical Success Criteria in PRD
-  - Ran full regression test suite (29 tests passed)
-  - Updated PRD.md to mark 8/9 success criteria as complete
-  - Remaining criteria is user-acceptance testing (1 week of usage)
-- Files changed:
-  - PRD.md
-- Learnings for future iterations:
-  - The project has met all functional requirements
-  - Ready for active use
----
-
-## Iteration 34 - Update Navbar Logo
-- What was implemented:
-  - Replaced the navbar logo + text combination with the single "In DO Time Logo" image
-  - Used newly uploaded `public/In_DO_Time_Logo.png`
-  - Removed the text "In DO Time" from the header as it is likely included in the new logo
-- Files changed:
-  - src/components/Header.tsx
-- Learnings for future iterations:
-  - When users provide a specific logo file (In_DO_Time_Logo.png), checks its dimensions and assume it replaces both icon and brand text if requested.
----
-
-## Iteration 35 - Triple Logo Size
-- What was implemented:
-  - Tripled the logo size in the header from 60x40 to 180x120
-  - Increased header container height from h-16 (64px) to h-36 (144px) to accommodate the larger logo
-- Files changed:
-  - src/components/Header.tsx
----
-
-## Iteration 35b - Fix Logo Height Class
-- What was implemented:
-  - Corrected  (invalid Tailwind class) to  in Header.tsx
-- Files changed:
-  - src/components/Header.tsx
----
-
-## Iteration 36 - 2x Logo Size & Tight Navbar
-- What was implemented:
-  - Resized logo to 120x80px (2x original baseline)
-  - Tightened navbar height to h-24 (96px) for a more compact but prominent look
-- Files changed:
-  - src/components/Header.tsx
----
-
-## Iteration 37 - Maximized Logo in Navbar
-- What was implemented:
-  - Scaled logo to fill the entire vertical height (h-full / 96px) of the h-24 navbar.
-  - Used object-contain to ensure the logo maintains its aspect ratio while bleeding to the top and bottom of the header.
-- Files changed:
-  - src/components/Header.tsx
 ---
