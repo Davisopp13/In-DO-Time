@@ -221,7 +221,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Test: `npx tsc --noEmit` passes; `NEXT_PUBLIC_DEMO_MODE=true npm run build` succeeds.
   - Acceptance: demo mode loads without runtime errors, shows seed trails.
 
-- [ ] **Task 7: Update `src/lib/mockData.ts` and `src/lib/seed.ts`**
+- [x] **Task 7: Update `src/lib/mockData.ts` and `src/lib/seed.ts`**
   - `mockData.ts`: regenerate mock data structures to match new schema (trails instead of clients).
   - `seed.ts`: if this is used at runtime for fresh installs, update it to insert trails not clients. If it's dev-only, mark it clearly.
   - Test: `npx tsc --noEmit` passes.

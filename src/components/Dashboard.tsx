@@ -16,7 +16,7 @@ import {
   type RunningTimerWithProject,
 } from '@/lib/timer'
 import EmptyState from '@/components/EmptyState'
-import { seedDefaultClients } from '@/lib/seed'
+import { seedDefaultTrails } from '@/lib/seed'
 
 interface ProjectWithClient {
   id: string
@@ -136,7 +136,7 @@ export default function Dashboard() {
 
       // Auto-seed default clients if no projects exist (first-time setup)
       if (!projectData || projectData.length === 0) {
-        const { seeded } = await seedDefaultClients()
+        const { seeded } = await seedDefaultTrails()
         if (seeded) {
           // Re-fetch projects after seeding
           const { data: seededData, error: seededError } = await supabase

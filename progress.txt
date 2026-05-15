@@ -127,6 +127,15 @@ Add the observation and journaling foundation:
   - 42/42 tests passed (`npm run test`).
 ---
 
+## Iteration 7 - Task 7: Update `src/lib/mockData.ts` and `src/lib/seed.ts`
+- What was implemented: `mockData.ts` was already updated in Iteration 6 (Task 6). Rewrote `seed.ts` entirely — replaced `SeedClient` interface and `seedDefaultClients` function with `SeedTrail` interface and `seedDefaultTrails` function. New seed inserts all 6 default trails, their projects, and rate rows for the 2 client trails. Updated Dashboard.tsx import from `seedDefaultClients` → `seedDefaultTrails`.
+- Files changed: `src/lib/seed.ts` (rewritten), `src/components/Dashboard.tsx` (import rename), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `getSupabase()` returns `any` — so `from('clients')` in v1 seed.ts didn't produce TypeScript errors even though the typed client rejects that table name. This means seed.ts v1 was type-silent, not type-safe.
+  - The function rename from `seedDefaultClients` to `seedDefaultTrails` required updating the import in Dashboard.tsx. Task 12 will fully rewrite Dashboard.tsx, but keeping the import valid avoids introducing new TS errors now.
+  - 42/42 tests passed, no new typecheck errors beyond pre-existing ones (clients/page.tsx, projects/page.tsx, ActiveTimers.tsx).
+---
+
 ### Ralph Run #4+ — Polish, Mobile, Edge Cases
 - README rewrite reflecting full v2 product
 - Per-entry billable override (`is_billable` on time entries)

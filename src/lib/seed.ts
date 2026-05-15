@@ -1,73 +1,138 @@
+// Dev-only: seeds default trails and rates for a fresh install.
+// Called by Dashboard on first load when no projects exist.
 import { getSupabase } from './supabase'
 
-interface SeedClient {
+interface SeedTrail {
   name: string
-  hourly_rate: number
+  slug: string
+  kind: 'client' | 'employer' | 'personal' | 'project'
+  is_billable: boolean
   color: string
+  display_order: number
   projects: string[]
+  initial_rate?: number
 }
 
-const DEFAULT_CLIENTS: SeedClient[] = [
+const DEFAULT_TRAILS: SeedTrail[] = [
   {
     name: 'B.B.',
-    hourly_rate: 30.00,
-    color: '#2563EB',
+    slug: 'bb',
+    kind: 'client',
+    is_billable: true,
+    color: '#3A7D44',
+    display_order: 1,
     projects: ['GA Gymnastics State Meets'],
+    initial_rate: 50.00,
   },
   {
-    name: 'Mariah',
-    hourly_rate: 45.00,
-    color: '#7C3AED',
-    projects: ['Evermore Equine'],
+    name: 'Evermore Equine',
+    slug: 'evermore-equine',
+    kind: 'client',
+    is_billable: true,
+    color: '#8B4513',
+    display_order: 2,
+    projects: ['Client Portal'],
+    initial_rate: 50.00,
+  },
+  {
+    name: 'Hapag-Lloyd',
+    slug: 'hapag-lloyd',
+    kind: 'employer',
+    is_billable: false,
+    color: '#003D6B',
+    display_order: 3,
+    projects: ['Logistics Dashboard'],
+  },
+  {
+    name: 'DObot',
+    slug: 'dobot',
+    kind: 'project',
+    is_billable: false,
+    color: '#6B46C1',
+    display_order: 4,
+    projects: ['Core Development'],
+  },
+  {
+    name: 'In DO Time',
+    slug: 'in-do-time',
+    kind: 'project',
+    is_billable: false,
+    color: '#1B5E20',
+    display_order: 5,
+    projects: ['Foundation Rebuild'],
+  },
+  {
+    name: 'Personal',
+    slug: 'personal',
+    kind: 'personal',
+    is_billable: false,
+    color: '#6B7280',
+    display_order: 6,
+    projects: [],
   },
 ]
 
-export async function seedDefaultClients(): Promise<{ seeded: boolean; message: string }> {
+export async function seedDefaultTrails(): Promise<{ seeded: boolean; message: string }> {
   const supabase = getSupabase()
 
-  // Check if clients already exist
-  const { data: existingClients, error: fetchError } = await supabase
-    .from('clients')
-    .select('name')
+  const { data: existingTrails, error: fetchError } = await supabase
+    .from('trails')
+    .select('slug')
 
   if (fetchError) {
-    return { seeded: false, message: `Failed to check existing clients: ${fetchError.message}` }
+    return { seeded: false, message: `Failed to check existing trails: ${fetchError.message}` }
   }
 
-  const existingNames = new Set((existingClients || []).map((c: { name: string }) => c.name))
+  const existingSlugs = new Set((existingTrails || []).map((t: { slug: string }) => t.slug))
   let seededCount = 0
 
-  for (const clientDef of DEFAULT_CLIENTS) {
-    if (existingNames.has(clientDef.name)) {
+  for (const trailDef of DEFAULT_TRAILS) {
+    if (existingSlugs.has(trailDef.slug)) {
       continue
     }
 
-    // Insert client
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
+    const { data: trail, error: trailError } = await supabase
+      .from('trails')
       .insert({
-        name: clientDef.name,
-        hourly_rate: clientDef.hourly_rate,
-        color: clientDef.color,
+        name: trailDef.name,
+        slug: trailDef.slug,
+        kind: trailDef.kind,
+        is_billable: trailDef.is_billable,
+        color: trailDef.color,
+        display_order: trailDef.display_order,
+        status: 'active',
       })
       .select('id')
       .single()
 
-    if (clientError || !client) {
-      return { seeded: false, message: `Failed to create client ${clientDef.name}: ${clientError?.message}` }
+    if (trailError || !trail) {
+      return { seeded: false, message: `Failed to create trail ${trailDef.name}: ${trailError?.message}` }
     }
 
-    // Insert projects
-    for (const projectName of clientDef.projects) {
+    for (const projectName of trailDef.projects) {
       const { error: projectError } = await supabase
         .from('projects')
-        .insert({
-          client_id: client.id,
-          name: projectName,
-        })
+        .insert({ trail_id: trail.id, name: projectName })
 
       if (projectError) {
         return { seeded: false, message: `Failed to create project ${projectName}: ${projectError.message}` }
+      }
+    }
+
+    if (trailDef.initial_rate != null) {
+      const today = new Date().toISOString().split('T')[0]
+      const { error: rateError } = await supabase
+        .from('rates')
+        .insert({
+          trail_id: trail.id,
+          project_id: null,
+          hourly_rate: trailDef.initial_rate,
+          effective_from: today,
+          effective_until: null,
+        })
+
+      if (rateError) {
+        return { seeded: false, message: `Failed to create rate for ${trailDef.name}: ${rateError.message}` }
       }
     }
 
@@ -75,8 +140,8 @@ export async function seedDefaultClients(): Promise<{ seeded: boolean; message: 
   }
 
   if (seededCount === 0) {
-    return { seeded: false, message: 'Default clients already exist' }
+    return { seeded: false, message: 'Default trails already exist' }
   }
 
-  return { seeded: true, message: `Seeded ${seededCount} default client(s) with projects` }
+  return { seeded: true, message: `Seeded ${seededCount} default trail(s) with projects` }
 }
