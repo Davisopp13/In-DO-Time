@@ -207,6 +207,16 @@ Add the observation and journaling foundation:
   - 42/42 tests passed, typecheck clean, build clean.
 ---
 
+## Iteration 15 - Task 15: Update `src/app/reports/page.tsx`
+- What was implemented: Rewrote reports/page.tsx — replaced `ClientSummary`/`ReportEntry` with `TrailSummary`/`ReportEntry` (trail-based). Trail filter dropdown replaces client filter. Fetches trails + rates in parallel on mount; rates used for `getEffectiveRateFromCache` inline helper (same pattern as Dashboard and time-log). Time entries queried with `projects!inner(trails(...))` join; JS-side trail filtering for mock compatibility. Grouped by trail → project, sorted by totalSeconds descending. Grand totals show total time across all trails and total earned (billable trails only). Non-billable trails show time but no cost column. CSV export uses `effectiveRate: null` for non-billable trails. Logo preserved in report header.
+- Files changed: `src/app/reports/page.tsx` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `allRates` must be loaded before `loadReport` runs to avoid zero costs — `loadReport` depends on `allRates` so it's included in its `useCallback` dependency array. On first render allRates is [], so costs compute as 0 until the rates effect resolves. This is fine for the UX.
+  - `grandTotalEarned` only shown if > 0 — cleaner for non-billable-only filtered views.
+  - `is_billable` badge on trail header only shows on `sm` and up to avoid crowding on mobile.
+  - 42/42 tests passed, typecheck clean, build clean.
+---
+
 ## Iteration 13 - Task 13: Update `src/app/time-log/page.tsx`
 - What was implemented: Replaced all `client_*` references with `trail_*` in `TimeLogEntry` interface. Filter dropdown changed from "Client" to "Trail" with JS-side trail filtering (mock compatibility for dotted-path `.eq('projects.trail_id', ...)` filters). Project cascade from trail works in both filter and manual entry modal. Removed `effectiveRate` from entry; added `trail_is_billable` flag. Added `allRates` state + `getEffectiveRateFromCache` pure function (same pattern as Dashboard). Cost shown only for billable trails; day earnings shown only if > 0. Manual entry modal now has Trail → Project (cascaded, disabled until trail selected) → Start/End/Notes flow.
 - Files changed: `src/app/time-log/page.tsx` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).

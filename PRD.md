@@ -276,7 +276,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Edit/archive actions preserved.
   - Test: `npx tsc --noEmit`, `npm run build`.
 
-- [ ] **Task 15: Update `src/app/reports/page.tsx`**
+- [x] **Task 15: Update `src/app/reports/page.tsx`**
   - Summary view grouped by trail → project.
   - Show: trail name, project name, total hours, total cost (using `computeEntryCost`).
   - CSV export filtered by trail + date range. Uses updated `csv.ts`.

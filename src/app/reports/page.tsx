@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
 import { generateCSV, downloadCSV, generateCSVFilename } from '@/lib/csv'
+import { Rate } from '@/types/database'
 import EmptyState from '@/components/EmptyState'
 
 interface ReportEntry {
@@ -12,15 +13,13 @@ interface ReportEntry {
   start_time: string
   end_time: string | null
   duration_seconds: number | null
-  is_running: boolean
-  is_manual: boolean
   notes: string | null
   project_id: string
   project_name: string
-  client_id: string
-  client_name: string
-  client_color: string
-  effectiveRate: number
+  trail_id: string
+  trail_name: string
+  trail_color: string
+  trail_is_billable: boolean
 }
 
 interface ProjectSummary {
@@ -31,39 +30,75 @@ interface ProjectSummary {
   entryCount: number
 }
 
-interface ClientSummary {
+interface TrailSummary {
   id: string
   name: string
   color: string
+  is_billable: boolean
   totalSeconds: number
   totalCost: number
   entryCount: number
   projects: ProjectSummary[]
 }
 
+function getEffectiveRateFromCache(
+  rates: Rate[],
+  trailId: string,
+  projectId: string,
+  atDate: Date
+): number | null {
+  const dateStr = atDate.toISOString().split('T')[0]
+  const projectRates = rates.filter(
+    r =>
+      r.trail_id === trailId &&
+      r.project_id === projectId &&
+      r.effective_from <= dateStr &&
+      (r.effective_until === null || r.effective_until >= dateStr)
+  )
+  if (projectRates.length > 0) {
+    return projectRates.sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0].hourly_rate
+  }
+  const trailRates = rates.filter(
+    r =>
+      r.trail_id === trailId &&
+      r.project_id === null &&
+      r.effective_from <= dateStr &&
+      (r.effective_until === null || r.effective_until >= dateStr)
+  )
+  if (trailRates.length > 0) {
+    return trailRates.sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0].hourly_rate
+  }
+  return null
+}
+
 export default function ReportsPage() {
-  const [clientSummaries, setClientSummaries] = useState<ClientSummary[]>([])
+  const [trailSummaries, setTrailSummaries] = useState<TrailSummary[]>([])
   const [reportEntries, setReportEntries] = useState<ReportEntry[]>([])
+  const [allRates, setAllRates] = useState<Rate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Filter state
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([])
-  const [selectedClient, setSelectedClient] = useState('')
+  const [trails, setTrails] = useState<{ id: string; name: string }[]>([])
+  const [selectedTrail, setSelectedTrail] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // Collapse state for client sections
+  // Collapse state per trail
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
-  // Load filter options
+  // Load filter options and rates
   useEffect(() => {
-    async function loadClients() {
+    async function loadMeta() {
       const supabase = getSupabase()
-      const { data } = await supabase.from('clients').select('id, name').order('name')
-      if (data) setClients(data)
+      const [trailsRes, ratesRes] = await Promise.all([
+        supabase.from('trails').select('id, name').eq('status', 'active').order('display_order'),
+        supabase.from('rates').select('*'),
+      ])
+      if (trailsRes.data) setTrails(trailsRes.data)
+      if (ratesRes.data) setAllRates(ratesRes.data as Rate[])
     }
-    loadClients()
+    loadMeta()
   }, [])
 
   const loadReport = useCallback(async () => {
@@ -74,20 +109,18 @@ export default function ReportsPage() {
       let query = supabase
         .from('time_entries')
         .select(`
-          id, start_time, end_time, duration_seconds, is_running, is_manual, notes,
+          id, start_time, end_time, duration_seconds, notes,
           project_id,
           projects!inner(
             id,
             name,
-            hourly_rate_override,
-            client_id,
-            clients(id, name, hourly_rate, color)
+            trail_id,
+            trails(id, name, color, is_billable)
           )
         `)
         .eq('is_running', false)
         .order('start_time', { ascending: false })
 
-      // Apply filters
       if (startDate) {
         query = query.gte('start_time', new Date(startDate).toISOString())
       }
@@ -96,49 +129,51 @@ export default function ReportsPage() {
         end.setHours(23, 59, 59, 999)
         query = query.lte('start_time', end.toISOString())
       }
-      if (selectedClient) {
-        query = query.eq('projects.client_id', selectedClient)
-      }
 
       const { data, error: fetchError } = await query
-
       if (fetchError) throw fetchError
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entries: ReportEntry[] = (data || []).map((e: any) => {
-        const client = e.projects.clients || { name: 'Unknown', hourly_rate: 0, color: '#000000' }
+      let entries: ReportEntry[] = (data || []).map((e: any) => {
+        const trail = e.projects.trails || { id: '', name: 'Unknown', color: '#6B7280', is_billable: false }
         return {
           id: e.id,
           start_time: e.start_time,
           end_time: e.end_time,
           duration_seconds: e.duration_seconds,
-          is_running: e.is_running,
-          is_manual: e.is_manual,
           notes: e.notes,
           project_id: e.project_id,
           project_name: e.projects.name,
-          client_id: e.projects.client_id,
-          client_name: client.name,
-          client_color: client.color,
-          effectiveRate: e.projects.hourly_rate_override ?? client.hourly_rate,
+          trail_id: e.projects.trail_id,
+          trail_name: trail.name,
+          trail_color: trail.color ?? '#6B7280',
+          trail_is_billable: trail.is_billable,
         }
       })
 
-      // Store entries for CSV export
+      // JS-side trail filter for mock compatibility
+      if (selectedTrail) {
+        entries = entries.filter(e => e.trail_id === selectedTrail)
+      }
+
       setReportEntries(entries)
 
-      // Group by client → project
-      const clientMap = new Map<string, ClientSummary>()
+      // Group by trail → project
+      const trailMap = new Map<string, TrailSummary>()
 
       for (const entry of entries) {
         const seconds = entry.duration_seconds ?? 0
-        const cost = calculateRunningCost(seconds, entry.effectiveRate)
+        const rate = entry.trail_is_billable
+          ? getEffectiveRateFromCache(allRates, entry.trail_id, entry.project_id, new Date(entry.start_time))
+          : null
+        const cost = rate != null ? calculateRunningCost(seconds, rate) : 0
 
-        if (!clientMap.has(entry.client_id)) {
-          clientMap.set(entry.client_id, {
-            id: entry.client_id,
-            name: entry.client_name,
-            color: entry.client_color,
+        if (!trailMap.has(entry.trail_id)) {
+          trailMap.set(entry.trail_id, {
+            id: entry.trail_id,
+            name: entry.trail_name,
+            color: entry.trail_color,
+            is_billable: entry.trail_is_billable,
             totalSeconds: 0,
             totalCost: 0,
             entryCount: 0,
@@ -146,85 +181,81 @@ export default function ReportsPage() {
           })
         }
 
-        const client = clientMap.get(entry.client_id)!
-        client.totalSeconds += seconds
-        client.totalCost += cost
-        client.entryCount += 1
+        const trail = trailMap.get(entry.trail_id)!
+        trail.totalSeconds += seconds
+        trail.totalCost += cost
+        trail.entryCount += 1
 
-        let project = client.projects.find((p) => p.id === entry.project_id)
+        let project = trail.projects.find(p => p.id === entry.project_id)
         if (!project) {
-          project = {
-            id: entry.project_id,
-            name: entry.project_name,
-            totalSeconds: 0,
-            totalCost: 0,
-            entryCount: 0,
-          }
-          client.projects.push(project)
+          project = { id: entry.project_id, name: entry.project_name, totalSeconds: 0, totalCost: 0, entryCount: 0 }
+          trail.projects.push(project)
         }
         project.totalSeconds += seconds
         project.totalCost += cost
         project.entryCount += 1
       }
 
-      // Sort clients by total cost descending, projects within each client by cost descending
-      const summaries = Array.from(clientMap.values())
-        .sort((a, b) => b.totalCost - a.totalCost)
-        .map((client) => ({
-          ...client,
-          projects: client.projects.sort((a, b) => b.totalCost - a.totalCost),
+      const summaries = Array.from(trailMap.values())
+        .sort((a, b) => b.totalSeconds - a.totalSeconds)
+        .map(trail => ({
+          ...trail,
+          projects: trail.projects.sort((a, b) => b.totalSeconds - a.totalSeconds),
         }))
 
-      setClientSummaries(summaries)
+      setTrailSummaries(summaries)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report')
     } finally {
       setLoading(false)
     }
-  }, [selectedClient, startDate, endDate])
+  }, [selectedTrail, startDate, endDate, allRates])
 
   useEffect(() => {
     loadReport()
   }, [loadReport])
 
   const clearFilters = () => {
-    setSelectedClient('')
+    setSelectedTrail('')
     setStartDate('')
     setEndDate('')
   }
 
-  const toggleCollapse = (clientId: string) => {
-    setCollapsed((prev) => ({ ...prev, [clientId]: !prev[clientId] }))
+  const toggleCollapse = (trailId: string) => {
+    setCollapsed(prev => ({ ...prev, [trailId]: !prev[trailId] }))
   }
 
-  const hasFilters = selectedClient || startDate || endDate
+  const hasFilters = selectedTrail || startDate || endDate
 
   const handleExportCSV = () => {
     if (reportEntries.length === 0) return
 
-    const csvEntries = reportEntries.map((e) => ({
-      trail_name: e.client_name,
-      project_name: e.project_name,
-      start_time: e.start_time,
-      end_time: e.end_time,
-      duration_seconds: e.duration_seconds,
-      notes: e.notes,
-      effectiveRate: e.effectiveRate,
-    }))
+    const csvEntries = reportEntries.map(e => {
+      const rate = e.trail_is_billable
+        ? getEffectiveRateFromCache(allRates, e.trail_id, e.project_id, new Date(e.start_time))
+        : null
+      return {
+        trail_name: e.trail_name,
+        project_name: e.project_name,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        duration_seconds: e.duration_seconds,
+        notes: e.notes,
+        effectiveRate: rate,
+      }
+    })
 
     const csv = generateCSV(csvEntries)
-    const clientName = selectedClient
-      ? clients.find((c) => c.id === selectedClient)?.name
-      : undefined
-    const filename = generateCSVFilename(clientName, startDate, endDate)
+    const trailName = selectedTrail ? trails.find(t => t.id === selectedTrail)?.name : undefined
+    const filename = generateCSVFilename(trailName, startDate, endDate)
     downloadCSV(csv, filename)
   }
 
   // Grand totals
-  const grandTotalSeconds = clientSummaries.reduce((sum, c) => sum + c.totalSeconds, 0)
-  const grandTotalCost = clientSummaries.reduce((sum, c) => sum + c.totalCost, 0)
-  const grandTotalEntries = clientSummaries.reduce((sum, c) => sum + c.entryCount, 0)
+  const grandTotalSeconds = trailSummaries.reduce((sum, t) => sum + t.totalSeconds, 0)
+  const grandTotalEarned = trailSummaries.filter(t => t.is_billable).reduce((sum, t) => sum + t.totalCost, 0)
+  const grandTotalEntries = trailSummaries.reduce((sum, t) => sum + t.entryCount, 0)
 
   if (loading) {
     return (
@@ -301,7 +332,7 @@ export default function ReportsPage() {
           <div>
             <h1 className="text-2xl font-bold text-text dark:text-white">Reports</h1>
             <p className="text-sm text-text-muted">
-              Summary by client and project
+              Summary by trail and project
               {hasFilters ? ' (filtered)' : ''}
             </p>
           </div>
@@ -323,15 +354,15 @@ export default function ReportsPage() {
       <div className="mb-6 glass-card border border-border p-4 shadow-card">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <div className="col-span-1 sm:col-span-1">
-            <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Trail</label>
             <select
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
+              value={selectedTrail}
+              onChange={(e) => setSelectedTrail(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="" className="bg-surface dark:bg-slate-900">All Clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id} className="bg-surface dark:bg-slate-900">{c.name}</option>
+              <option value="" className="bg-surface dark:bg-slate-900">All Trails</option>
+              {trails.map((t) => (
+                <option key={t.id} value={t.id} className="bg-surface dark:bg-slate-900">{t.name}</option>
               ))}
             </select>
           </div>
@@ -370,13 +401,13 @@ export default function ReportsPage() {
       </div>
 
       {/* Grand Totals */}
-      {clientSummaries.length > 0 && (
+      {trailSummaries.length > 0 && (
         <div className="mb-6 glass-card border-l-4 border-accent p-6 shadow-card bg-surface/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-text dark:text-white">Total</p>
               <p className="text-xs text-text-muted">
-                {grandTotalEntries} {grandTotalEntries === 1 ? 'entry' : 'entries'} across {clientSummaries.length} {clientSummaries.length === 1 ? 'client' : 'clients'}
+                {grandTotalEntries} {grandTotalEntries === 1 ? 'entry' : 'entries'} across {trailSummaries.length} {trailSummaries.length === 1 ? 'trail' : 'trails'}
               </p>
             </div>
             <div className="flex items-center gap-6">
@@ -386,19 +417,21 @@ export default function ReportsPage() {
                 </p>
                 <p className="text-xs text-text-muted">Total Time</p>
               </div>
-              <div className="sm:text-right">
-                <p className="font-mono text-lg font-bold text-accent">
-                  {formatCurrency(grandTotalCost)}
-                </p>
-                <p className="text-xs text-text-muted">Total Earned</p>
-              </div>
+              {grandTotalEarned > 0 && (
+                <div className="sm:text-right">
+                  <p className="font-mono text-lg font-bold text-accent">
+                    {formatCurrency(grandTotalEarned)}
+                  </p>
+                  <p className="text-xs text-text-muted">Total Earned</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Client Summaries */}
-      {clientSummaries.length === 0 ? (
+      {/* Trail Summaries */}
+      {trailSummaries.length === 0 ? (
         <EmptyState title={hasFilters ? 'No matching entries' : 'No completed time entries yet'}>
           {hasFilters ? (
             <button
@@ -413,45 +446,53 @@ export default function ReportsPage() {
         </EmptyState>
       ) : (
         <div className="space-y-4">
-          {clientSummaries.map((client) => (
+          {trailSummaries.map((trail) => (
             <div
-              key={client.id}
+              key={trail.id}
               className="overflow-hidden glass-card shadow-card"
             >
-              {/* Client Header */}
+              {/* Trail Header */}
               <button
-                onClick={() => toggleCollapse(client.id)}
+                onClick={() => toggleCollapse(trail.id)}
                 className="flex w-full items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-4 text-left hover:bg-surface-foreground/5 dark:hover:bg-white/5 transition-colors"
               >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <span
                     className="h-4 w-4 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: client.color }}
+                    style={{ backgroundColor: trail.color }}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm sm:text-base font-bold text-text dark:text-white truncate">{client.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm sm:text-base font-bold text-text dark:text-white truncate">{trail.name}</p>
+                      {trail.is_billable && (
+                        <span className="hidden sm:inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+                          Billable
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-text-muted">
-                      {client.entryCount} {client.entryCount === 1 ? 'entry' : 'entries'} · {client.projects.length} {client.projects.length === 1 ? 'project' : 'projects'}
+                      {trail.entryCount} {trail.entryCount === 1 ? 'entry' : 'entries'} · {trail.projects.length} {trail.projects.length === 1 ? 'project' : 'projects'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                   <div className="text-right">
                     <p className="font-mono text-xs sm:text-sm font-medium text-text dark:text-white">
-                      {formatDuration(client.totalSeconds)}
+                      {formatDuration(trail.totalSeconds)}
                     </p>
                     <p className="hidden sm:block text-xs text-text-muted">Time</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-xs sm:text-sm font-medium text-text dark:text-white">
-                      {formatCurrency(client.totalCost)}
-                    </p>
-                    <p className="hidden sm:block text-xs text-text-muted">Earned</p>
-                  </div>
-                  {/* Collapse chevron */}
+                  {trail.is_billable && (
+                    <div className="text-right">
+                      <p className="font-mono text-xs sm:text-sm font-medium text-text dark:text-white">
+                        {formatCurrency(trail.totalCost)}
+                      </p>
+                      <p className="hidden sm:block text-xs text-text-muted">Earned</p>
+                    </div>
+                  )}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className={`h-5 w-5 text-text-muted transition-transform ${collapsed[client.id] ? '' : 'rotate-180'}`}
+                    className={`h-5 w-5 text-text-muted transition-transform ${collapsed[trail.id] ? '' : 'rotate-180'}`}
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -461,10 +502,10 @@ export default function ReportsPage() {
               </button>
 
               {/* Project Breakdown */}
-              {!collapsed[client.id] && (
+              {!collapsed[trail.id] && (
                 <div className="border-t border-border">
                   <div className="divide-y divide-border">
-                    {client.projects.map((project) => (
+                    {trail.projects.map((project) => (
                       <div
                         key={project.id}
                         className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 py-3 pl-6 sm:pl-12 hover:bg-surface-foreground/[0.02] dark:hover:bg-white/[0.02]"
@@ -481,12 +522,13 @@ export default function ReportsPage() {
                               {formatDuration(project.totalSeconds)}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-mono text-xs sm:text-sm text-text dark:text-white">
-                              {formatCurrency(project.totalCost)}
-                            </p>
-                          </div>
-                          {/* Spacer to align with chevron column */}
+                          {trail.is_billable && (
+                            <div className="text-right">
+                              <p className="font-mono text-xs sm:text-sm text-text dark:text-white">
+                                {formatCurrency(project.totalCost)}
+                              </p>
+                            </div>
+                          )}
                           <div className="w-5" />
                         </div>
                       </div>
