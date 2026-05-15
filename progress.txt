@@ -225,3 +225,11 @@ Add the observation and journaling foundation:
   - `getEffectiveRateFromCache` pure function avoids N+1 queries — fetch all rates once, compute per-entry in render.
   - Only pre-existing errors from `projects/page.tsx` remain (Task 14 fixes those). 42/42 tests passed.
 ---
+
+## Iteration 16 - Task 16: Update `src/hooks/useRunningTimers.ts`
+- What was implemented: No code changes required. The hook was already correct for v2 schema — it imports `RunningTimerWithProject` from `timer.ts`, which was updated in Task 5 to use `trail` (not `client`) with `id/name/color/is_billable` fields. The hook extends that type with `elapsedSeconds` and wraps `getAllRunningTimersWithProjects()` — no client/rate-on-entry references remained.
+- Files changed: `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - When a hook's only logic is "call a function and extend the return type," updating the downstream function (timer.ts Task 5) is sufficient — no separate hook changes needed.
+  - `npx tsc --noEmit` and 42/42 tests passed.
+---

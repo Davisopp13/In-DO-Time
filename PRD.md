@@ -285,7 +285,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
 
 ### Phase 4: Hooks, Tests, Final Verification
 
-- [ ] **Task 16: Update `src/hooks/useRunningTimers.ts`**
+- [x] **Task 16: Update `src/hooks/useRunningTimers.ts`**
   - Adjust types and queries for new schema.
   - Test: `npx tsc --noEmit`.
 
