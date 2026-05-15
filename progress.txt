@@ -98,6 +98,16 @@ Add the observation and journaling foundation:
 - Skill-to-time-entry propagation flow (manual confirmation for billable trails, optional auto for personal)
 - DObot revival, eventual integration as briefing composer
 
+## Iteration 4 - Task 4: Create `src/lib/rates.ts` rate-lookup helper
+- What was implemented: Created `src/lib/rates.ts` with `getEffectiveRate` (queries rates table, prefers project-level rate over trail-level, picks most recent effective rate, returns null if none found) and `computeEntryCost` (divides duration_seconds by 3600 × rate). Created `src/__tests__/rates.test.ts` with 13 tests covering all 4 required scenarios.
+- Files changed: `src/lib/rates.ts` (new), `src/__tests__/rates.test.ts` (new), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - Vitest mock pattern: use `vi.mock('../lib/supabase', () => ({ getSupabase: vi.fn() }))` then `vi.mocked(getSupabase).mockReturnValue(...)` in each test.
+  - Supabase chain mock: make a thenable builder (has `.then()`) so `await supabase.from(...).select().eq().lte()` resolves correctly. Each method returns `this`; `then` delegates to `Promise.resolve({ data, error })`.
+  - TypeScript errors in `clients/page.tsx`, `projects/page.tsx`, `mockData.ts` are pre-existing from Task 3 — rates.ts itself is type-clean.
+  - 42/42 tests passed (`npm run test`).
+---
+
 ### Ralph Run #4+ — Polish, Mobile, Edge Cases
 - README rewrite reflecting full v2 product
 - Per-entry billable override (`is_billable` on time entries)

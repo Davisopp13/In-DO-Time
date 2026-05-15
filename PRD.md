@@ -199,7 +199,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
 
 ### Phase 2: Core Library Layer
 
-- [ ] **Task 4: Create `src/lib/rates.ts` rate-lookup helper**
+- [x] **Task 4: Create `src/lib/rates.ts` rate-lookup helper**
   - Export `getEffectiveRate(trailId: string, projectId: string | null, atDate: Date): Promise<number | null>`.
   - Logic: prefer the most recent rate row where `project_id = projectId` AND `effective_from <= atDate` AND (`effective_until IS NULL OR effective_until >= atDate`). Fall back to trail-level rate (`project_id IS NULL`) with same date constraints. Return null if no rate found.
   - Also export `computeEntryCost(entry: TimeEntry, trailId: string): Promise<number>` that uses `getEffectiveRate` against the entry's `start_time`.
