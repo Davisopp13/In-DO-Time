@@ -255,7 +255,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Adding a new rate inserts a new row AND sets the previous active rate's `effective_until` to (new rate's `effective_from` - 1 day).
   - Test: `npx tsc --noEmit`, `npm run build`.
 
-- [ ] **Task 12: Update `src/components/Dashboard.tsx`**
+- [x] **Task 12: Update `src/components/Dashboard.tsx`**
   - Replace v1 client-grouped cards with trail-grouped cards.
   - Show only `is_billable = TRUE` trails by default with active timer controls (preserves the billable-client workflow). Add a toggle/section for non-billable trails so Hapag-Lloyd/personal can be timed too.
   - Each project card under a trail shows: trail name, project name, live elapsed time (ticking), live cost (only if trail is billable — use `rates.ts`).

@@ -109,6 +109,16 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - 42/42 tests passed.
 ---
 
+## Iteration 12 - Task 12: Update `src/components/Dashboard.tsx`
+- What was implemented: Rewrote Dashboard.tsx — replaced `ProjectWithClient` interface with `ProjectWithTrail`, replaced flat project list with trail-grouped cards (billable trails always visible, non-billable trails behind a toggle). Added `allRates` state and `getEffectiveRateFromCache` helper (in-memory rate lookup to avoid N+1 queries). Hero section now shows Entries / Billable earnings / Active timers. Each project card shows trail name + color, project name, live timer, and live cost (billable only). "Today's summary" computes total hours across all trails and total billable earnings using cached rates. Also fixed `ActiveTimers.tsx` type errors — replaced `timer.client.color/name` with `timer.trail.color/name`, removed `timer.effectiveRate` references.
+- Files changed: `src/components/Dashboard.tsx` (rewritten), `src/components/ActiveTimers.tsx` (type errors fixed), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `getEffectiveRateFromCache` as a module-level pure function avoids N+1 Supabase queries — fetch all rates once, compute per-project in the render loop.
+  - Inline render helpers (`renderProjectCard`, `renderTrailGroup`) work fine in functional components and keep the return JSX clean.
+  - ActiveTimers.tsx was orphaned (not imported anywhere) — fixed its type errors as a side effect of Task 12 to make typecheck partial progress.
+  - Pre-existing build failure from `projects/page.tsx` is unchanged (Task 14 will fix it). 42/42 tests passed.
+---
+
 ## Roadmap (For Future Context, Not This Run)
 
 ### Ralph Run #2 — Capture Layer
