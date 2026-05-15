@@ -241,7 +241,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Keep brand: DO Code Lab logo + "In DO Time" wordmark, theme toggle.
   - Test: `npx tsc --noEmit`, `npm run build`.
 
-- [ ] **Task 10: Rename and rebuild `src/app/clients/` → `src/app/trails/`**
+- [x] **Task 10: Rename and rebuild `src/app/clients/` → `src/app/trails/`**
   - Delete `src/app/clients/` entirely.
   - Create `src/app/trails/page.tsx` — list view of all active trails, grouped by `kind` (Clients section, Work section, Personal section, Projects section).
   - Each trail card shows: name, kind badge, billable indicator (if applicable), current effective rate (if billable), color swatch.

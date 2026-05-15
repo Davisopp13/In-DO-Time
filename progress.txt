@@ -155,6 +155,17 @@ Add the observation and journaling foundation:
   - 42/42 tests passed.
 ---
 
+## Iteration 10 - Task 10: Rename and rebuild `src/app/clients/` → `src/app/trails/`
+- What was implemented: Deleted `src/app/clients/` directory entirely. Created `src/app/trails/page.tsx` — list view of all trails grouped by kind (Clients, Work, Projects, Personal sections). Each card shows name, kind badge, billable indicator, current effective rate (for billable trails), color swatch, and archive/restore button. "Add trail" form with name, auto-generated slug (editable), kind dropdown, is_billable checkbox (default by kind), color picker, optional initial rate for billable trails.
+- Files changed: `src/app/clients/page.tsx` (deleted), `src/app/trails/page.tsx` (new), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `insert().select().single()` pattern breaks the mock client — `.select()` after `.insert()` overwrites the operation to 'select'. Instead, generate the ID client-side with `crypto.randomUUID()` and provide it in the TrailInsert, then use that ID for subsequent inserts (e.g., rate row). Both real Supabase and mock accept a provided `id` field.
+  - Filtering rates in JS (rather than with `.is('project_id', null)`) avoids the IS NULL issue — the mock's `.eq(column, null)` works for equality but the mock doesn't have `.is()`. Fetching all rates and filtering in JS is clean for small datasets.
+  - After deleting `clients/` route, the `.next/types/validator.ts` cache still references the old `clients/page.js`. Running `npm run build` regenerates it; subsequent `tsc --noEmit` is clean.
+  - Pre-existing errors from `projects/page.tsx` and `ActiveTimers.tsx` are unchanged — still only those two files.
+  - 42/42 tests passed.
+---
+
 ### Ralph Run #4+ — Polish, Mobile, Edge Cases
 - README rewrite reflecting full v2 product
 - Per-entry billable override (`is_billable` on time entries)
