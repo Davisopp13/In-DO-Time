@@ -235,7 +235,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
 
 ### Phase 3: UI Layer
 
-- [ ] **Task 9: Update `src/components/Header.tsx`**
+- [x] **Task 9: Update `src/components/Header.tsx`**
   - Replace any "Clients" nav link with "Trails".
   - Nav order: Dashboard | Trails | Time Log | Reports.
   - Keep brand: DO Code Lab logo + "In DO Time" wordmark, theme toggle.

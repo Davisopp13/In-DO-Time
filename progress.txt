@@ -146,6 +146,15 @@ Add the observation and journaling foundation:
   - 42/42 tests passed, no new typecheck errors beyond pre-existing ones (clients/page.tsx, projects/page.tsx, ActiveTimers.tsx).
 ---
 
+## Iteration 9 - Task 9: Update `src/components/Header.tsx`
+- What was implemented: Replaced navItems array — removed `clients` and `projects` links, added `trails` link (`/trails`), reordered to Dashboard | Trails | Time Log | Reports.
+- Files changed: `src/components/Header.tsx` (navItems updated), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `npm run build` still fails due to pre-existing errors in `clients/page.tsx` (Task 10 deletes that directory, which will fix it).
+  - Header.tsx itself has zero type errors — pre-existing errors don't block marking the task complete.
+  - 42/42 tests passed.
+---
+
 ### Ralph Run #4+ — Polish, Mobile, Edge Cases
 - README rewrite reflecting full v2 product
 - Per-entry billable override (`is_billable` on time entries)

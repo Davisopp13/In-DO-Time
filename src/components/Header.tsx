@@ -9,10 +9,9 @@ import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
+  { href: '/trails', label: 'Trails' },
   { href: '/time-log', label: 'Time Log' },
   { href: '/reports', label: 'Reports' },
-  { href: '/clients', label: 'Clients' },
-  { href: '/projects', label: 'Projects' },
 ];
 
 export default function Header() {
@@ -21,16 +20,16 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-6 z-50 mx-auto max-w-7xl px-4 mb-8 flex items-center justify-between">
+      <header className="sticky top-2 md:top-4 z-50 mx-auto max-w-7xl px-4 mb-4 md:mb-6 flex items-center justify-between">
         {/* Logo - Independent Floating Element */}
         <Link href="/" className="relative flex items-center h-auto w-auto shrink-0 transition-transform hover:scale-105 duration-200">
-          <div className="relative h-24 md:h-40 w-auto aspect-[3/2]">
+          <div className="relative h-12 md:h-20 w-32 md:w-56 overflow-hidden flex items-center justify-center">
             <Image
               src="/In_DO_Time_Logo.png"
               alt="In DO Time Logo"
               width={400}
               height={264}
-              className="h-full w-auto object-contain brightness-110 drop-shadow-lg"
+              className="w-full h-auto object-contain scale-[2.5] brightness-110 drop-shadow-lg translate-y-[2px]"
               priority
             />
           </div>
