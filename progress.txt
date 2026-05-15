@@ -252,3 +252,10 @@ Add the observation and journaling foundation:
   - `npm run build`: succeeded — all 10 routes built (/, /_not-found, /apple-icon.png, /icon.png, /projects, /reports, /time-log, /trails, /trails/[id]).
   - `npm run lint`: pre-existing environment failure — Node.js v24.13.0 incompatibility with ESLint's package.json. Not caused by v2 changes; PRD acceptance allows "pre-existing warnings/errors."
 ---
+
+## Iteration 19 - Task 19: Update PRD.md archive
+- What was implemented: Copied current PRD.md to PRD_v1.md to preserve this run's specification as a historical record. Marked Task 19 complete in PRD.md.
+- Files changed: `PRD_v1.md` (new — copy of PRD.md), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - PRD.md stays as active doc; PRD_v1.md is the historical archive of the v2 foundation run spec.
+---

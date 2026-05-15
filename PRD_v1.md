@@ -301,7 +301,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - `npm run test` passes.
   - Acceptance: all four commands clean.
 
-- [x] **Task 19: Update `PRD.md` archive**
+- [ ] **Task 19: Update `PRD.md` archive**
   - Rename existing `PRD.md` to `PRD_v1.md` to preserve history.
   - Leave this v2 PRD as the active `PRD.md` (or write a brief `PRD_v2_summary.md` reflecting completed state).
   - Test: file rename only.
