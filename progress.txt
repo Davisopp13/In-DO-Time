@@ -242,3 +242,13 @@ Add the observation and journaling foundation:
   - When a hook's only logic is "call a function and extend the return type," updating the downstream function (timer.ts Task 5) is sufficient — no separate hook changes needed.
   - `npx tsc --noEmit` and 42/42 tests passed.
 ---
+
+## Iteration 18 - Task 18: Full project verification
+- What was implemented: Ran all four verification commands. No code changes were needed — the codebase was already in a clean state.
+- Files changed: `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `npx tsc --noEmit`: zero errors (clean).
+  - `npm run test`: 43/43 passed.
+  - `npm run build`: succeeded — all 10 routes built (/, /_not-found, /apple-icon.png, /icon.png, /projects, /reports, /time-log, /trails, /trails/[id]).
+  - `npm run lint`: pre-existing environment failure — Node.js v24.13.0 incompatibility with ESLint's package.json. Not caused by v2 changes; PRD acceptance allows "pre-existing warnings/errors."
+---

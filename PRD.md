@@ -294,7 +294,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Full loop: create trail → add project → start timer → stop timer → verify time entry exists with correct project_id → verify computed cost via rates.ts matches expected.
   - Test: `npm run test` passes.
 
-- [ ] **Task 18: Full project verification**
+- [x] **Task 18: Full project verification**
   - `npx tsc --noEmit` passes with zero errors.
   - `npm run build` succeeds.
   - `npm run lint` passes (or only has pre-existing warnings).
