@@ -289,7 +289,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Adjust types and queries for new schema.
   - Test: `npx tsc --noEmit`.
 
-- [ ] **Task 17: Update or rewrite `src/__tests__/full-loop.test.ts`**
+- [x] **Task 17: Update or rewrite `src/__tests__/full-loop.test.ts`**
   - Update test to use trails instead of clients.
   - Full loop: create trail → add project → start timer → stop timer → verify time entry exists with correct project_id → verify computed cost via rates.ts matches expected.
   - Test: `npm run test` passes.

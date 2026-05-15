@@ -10,6 +10,17 @@ import {
   generateCSVFilename,
 } from '../lib/csv'
 
+// Hoisted mock — only used by the Full Loop section (pure utility tests are unaffected)
+vi.mock('../lib/supabase', () => ({
+  getSupabase: vi.fn(),
+}))
+
+import { computeEntryCost } from '../lib/rates'
+import { getSupabase } from '../lib/supabase'
+import type { Rate } from '../types/database'
+
+const mockGetSupabase = vi.mocked(getSupabase)
+
 // ---- Pure utility tests (no Supabase needed) ----
 
 describe('Timer Utilities', () => {
@@ -242,25 +253,38 @@ describe('CSV Export', () => {
   })
 })
 
-// ---- Full loop integration test (mocking Supabase) ----
+// ---- Full loop integration test (mocking Supabase for rates.ts) ----
 
-describe('Full Loop: add client → start timer → stop → view log → export CSV', () => {
-  // Mock Supabase responses to simulate the full user journey
-  const mockClient = {
-    id: 'client-001',
+describe('Full Loop: add trail → start timer → stop → view log → export CSV', () => {
+  const mockTrail = {
+    id: 'trail-001',
     name: 'B.B.',
-    hourly_rate: 30,
-    color: '#2563EB',
+    slug: 'bb',
+    description: null,
+    kind: 'client' as const,
+    is_billable: true,
+    color: '#3A7D44',
     status: 'active' as const,
+    display_order: 1,
     created_at: '2025-01-15T00:00:00.000Z',
     updated_at: '2025-01-15T00:00:00.000Z',
   }
 
+  const mockRate: Rate = {
+    id: 'rate-001',
+    trail_id: 'trail-001',
+    project_id: null,
+    hourly_rate: 30,
+    effective_from: '2025-01-01',
+    effective_until: null,
+    created_at: '2025-01-15T00:00:00.000Z',
+  }
+
   const mockProject = {
     id: 'project-001',
-    client_id: 'client-001',
+    trail_id: 'trail-001',
     name: 'GA Gymnastics State Meets',
-    hourly_rate_override: null,
+    description: null,
     status: 'active' as const,
     created_at: '2025-01-15T00:00:00.000Z',
     updated_at: '2025-01-15T00:00:00.000Z',
@@ -279,6 +303,8 @@ describe('Full Loop: add client → start timer → stop → view log → export
     notes: 'Working on header redesign',
     is_manual: false,
     is_running: true,
+    source: 'manual',
+    source_observation_id: null,
     created_at: mockStartTime,
     updated_at: mockStartTime,
   }
@@ -291,86 +317,53 @@ describe('Full Loop: add client → start timer → stop → view log → export
     updated_at: mockEndTime,
   }
 
-  // Capture Supabase calls for verification
-  let supabaseCalls: { table: string; method: string; args?: unknown }[] = []
-
-  // Create a chainable mock builder
-  function createQueryBuilder(resolvedData: unknown, resolvedError: unknown = null) {
-    const builder: Record<string, unknown> = {}
-    const methods = ['select', 'insert', 'update', 'delete', 'eq', 'order', 'limit', 'single', 'gte', 'lte']
-    for (const method of methods) {
-      builder[method] = vi.fn(() => {
-        if (method === 'single') {
-          return Promise.resolve({ data: resolvedData, error: resolvedError })
-        }
-        return builder
-      })
+  function makeRatesMock(rates: Rate[]) {
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      then(resolve: (result: { data: Rate[]; error: null }) => unknown) {
+        return Promise.resolve({ data: rates, error: null }).then(resolve)
+      },
     }
-    // For terminal calls that aren't single
-    builder.then = undefined
-    return builder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { from: vi.fn().mockReturnValue(builder) } as any
   }
 
   beforeEach(() => {
-    supabaseCalls = []
-
-    // Mock the Supabase module
-    vi.doMock('../lib/supabase', () => {
-      return {
-        getSupabase: () => ({
-          from: (table: string) => {
-            supabaseCalls.push({ table, method: 'from' })
-
-            // Return appropriate data based on table and flow state
-            if (table === 'clients') {
-              return createQueryBuilder(mockClient)
-            }
-            if (table === 'projects') {
-              return createQueryBuilder(mockProject)
-            }
-            if (table === 'time_entries') {
-              return createQueryBuilder(mockRunningEntry)
-            }
-            return createQueryBuilder(null)
-          },
-        }),
-        supabase: {
-          from: (table: string) => {
-            supabaseCalls.push({ table, method: 'from' })
-            return createQueryBuilder(null)
-          },
-        },
-      }
-    })
+    vi.clearAllMocks()
+    mockGetSupabase.mockReturnValue(makeRatesMock([mockRate]))
   })
 
   it('simulates the complete user workflow end-to-end', async () => {
-    // Step 1: Add a client
-    // In the real app, this creates a client via Supabase
-    expect(mockClient.name).toBe('B.B.')
-    expect(mockClient.hourly_rate).toBe(30)
+    // Step 1: Add a trail (v2 shape — kind + is_billable replace old hourly_rate on client)
+    expect(mockTrail.name).toBe('B.B.')
+    expect(mockTrail.kind).toBe('client')
+    expect(mockTrail.is_billable).toBe(true)
 
-    // Step 2: Add a project under the client
-    expect(mockProject.client_id).toBe(mockClient.id)
+    // Step 2: Add a project under the trail
+    expect(mockProject.trail_id).toBe(mockTrail.id)
     expect(mockProject.name).toBe('GA Gymnastics State Meets')
 
-    // Step 3: Start a timer (creates a running time entry)
+    // Step 3: Start a timer (creates a running time entry with source field)
     expect(mockRunningEntry.is_running).toBe(true)
     expect(mockRunningEntry.start_time).toBeTruthy()
     expect(mockRunningEntry.end_time).toBeNull()
     expect(mockRunningEntry.project_id).toBe(mockProject.id)
+    expect(mockRunningEntry.source).toBe('manual')
 
     // Step 4: Stop the timer (sets end_time, calculates duration)
     expect(mockStoppedEntry.is_running).toBe(false)
     expect(mockStoppedEntry.end_time).toBeTruthy()
     expect(mockStoppedEntry.duration_seconds).toBe(5400) // 1.5 hours
 
-    // Step 5: View the entry in the time log
+    // Step 5: View the entry — duration formatted, cost computed via rates.ts
     const elapsed = formatDuration(mockStoppedEntry.duration_seconds!)
     expect(elapsed).toBe('01:30:00')
 
-    const cost = calculateRunningCost(mockStoppedEntry.duration_seconds!, mockClient.hourly_rate)
-    expect(cost).toBe(45) // 1.5 hours * $30/hr
+    // computeEntryCost queries the rates table (mocked to return mockRate at $30/hr)
+    const cost = await computeEntryCost(mockStoppedEntry, mockTrail.id)
+    expect(cost).toBe(45) // 1.5 hours × $30/hr = $45
 
     const formattedCost = formatCurrency(cost)
     expect(formattedCost).toBe('$45.00')
@@ -378,29 +371,24 @@ describe('Full Loop: add client → start timer → stop → view log → export
     // Step 6: Export CSV
     const csvEntries = [
       {
-        trail_name: mockClient.name,
+        trail_name: mockTrail.name,
         project_name: mockProject.name,
         start_time: mockStoppedEntry.start_time,
         end_time: mockStoppedEntry.end_time!,
         duration_seconds: mockStoppedEntry.duration_seconds,
         notes: mockStoppedEntry.notes,
-        effectiveRate: mockClient.hourly_rate,
+        effectiveRate: mockRate.hourly_rate,
       },
     ]
 
     const csv = generateCSV(csvEntries)
     const lines = csv.split('\n')
 
-    // Verify CSV has header + data row
     expect(lines).toHaveLength(2)
-
-    // Verify header columns
     expect(lines[0]).toContain('Trail')
     expect(lines[0]).toContain('Project')
     expect(lines[0]).toContain('Duration')
     expect(lines[0]).toContain('Cost')
-
-    // Verify data row contains correct values
     expect(lines[1]).toContain('B.B.')
     expect(lines[1]).toContain('GA Gymnastics State Meets')
     expect(lines[1]).toContain('01:30:00')
@@ -408,9 +396,14 @@ describe('Full Loop: add client → start timer → stop → view log → export
     expect(lines[1]).toContain('$30.00')
     expect(lines[1]).toContain('Working on header redesign')
 
-    // Verify filename generation
     const filename = generateCSVFilename('B.B.', '2025-01-15', '2025-01-15')
     expect(filename).toBe('in-do-time_b.b._2025-01-15_to_2025-01-15_export.csv')
+  })
+
+  it('verifies computed cost via rates.ts matches expected', async () => {
+    // computeEntryCost uses getEffectiveRate under the hood (mocked to return $30/hr)
+    const cost = await computeEntryCost(mockStoppedEntry, mockTrail.id)
+    expect(cost).toBe(45) // 1.5 hours × $30/hr
   })
 
   it('handles multiple trails with different rates in a single export', () => {
@@ -440,27 +433,28 @@ describe('Full Loop: add client → start timer → stop → view log → export
 
     expect(lines).toHaveLength(3) // header + 2 entries
 
-    // B.B. entry: 1.5h * $30 = $45
+    // B.B. entry: 1.5h × $30 = $45
     expect(lines[1]).toContain('B.B.')
     expect(lines[1]).toContain('$45.00')
 
-    // Evermore entry: 1h * $45 = $45
+    // Evermore entry: 1h × $45 = $45
     expect(lines[2]).toContain('Evermore Equine')
     expect(lines[2]).toContain('$45.00')
   })
 
   it('verifies timer state transitions through the workflow', () => {
-    // Initial state: no timer
+    // Running entry: no end_time, no duration, has source field
     expect(mockRunningEntry.is_running).toBe(true)
     expect(mockRunningEntry.end_time).toBeNull()
     expect(mockRunningEntry.duration_seconds).toBeNull()
+    expect(mockRunningEntry.source).toBe('manual')
+    expect(mockRunningEntry.source_observation_id).toBeNull()
 
-    // After stop: timer completed
+    // Stopped entry: end_time set, duration computed
     expect(mockStoppedEntry.is_running).toBe(false)
     expect(mockStoppedEntry.end_time).not.toBeNull()
     expect(mockStoppedEntry.duration_seconds).toBeGreaterThan(0)
 
-    // Duration should match the time between start and end
     const start = new Date(mockStoppedEntry.start_time)
     const end = new Date(mockStoppedEntry.end_time!)
     const expectedDuration = Math.floor((end.getTime() - start.getTime()) / 1000)

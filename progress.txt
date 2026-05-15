@@ -226,6 +226,15 @@ Add the observation and journaling foundation:
   - Only pre-existing errors from `projects/page.tsx` remain (Task 14 fixes those). 42/42 tests passed.
 ---
 
+## Iteration 17 - Task 17: Update `src/__tests__/full-loop.test.ts`
+- What was implemented: Rewrote the Full Loop integration section — replaced `mockClient` (v1 shape with `hourly_rate`) with `mockTrail` (v2 shape: `slug`, `kind`, `is_billable`, etc.), replaced `mockProject.client_id` with `mockProject.trail_id`, added `source: 'manual'` and `source_observation_id: null` to mock time entries, added `mockRate` (v2 Rate shape). Added `vi.mock('../lib/supabase', ...)` at top level (hoisted) and imported `computeEntryCost` from rates.ts. Full loop test now calls `computeEntryCost(mockStoppedEntry, mockTrail.id)` to verify cost via rates infrastructure (mocked Supabase returns mockRate at $30/hr → 1.5h = $45). Added a standalone `verifies computed cost via rates.ts matches expected` test. Timer Utilities and CSV Export tests are unchanged.
+- Files changed: `src/__tests__/full-loop.test.ts` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `vi.mock` at the top of the file is hoisted by Vitest — safe to place after imports syntactically; pure utility tests in the same file are unaffected since `getSupabase` is only called by rates.ts and timer.ts async functions, not the pure formatting helpers.
+  - `computeEntryCost` takes a full `TimeEntry` object — `mockStoppedEntry` needs all required fields (`source`, `source_observation_id`, etc.) to be type-compatible.
+  - Test count went from 42 to 43 (added one net-new test for rates cost verification). All 43 pass.
+---
+
 ## Iteration 16 - Task 16: Update `src/hooks/useRunningTimers.ts`
 - What was implemented: No code changes required. The hook was already correct for v2 schema — it imports `RunningTimerWithProject` from `timer.ts`, which was updated in Task 5 to use `trail` (not `client`) with `id/name/color/is_billable` fields. The hook extends that type with `elapsedSeconds` and wraps `getAllRunningTimersWithProjects()` — no client/rate-on-entry references remained.
 - Files changed: `PRD.md` (task marked complete), `progress.txt` (this update).
