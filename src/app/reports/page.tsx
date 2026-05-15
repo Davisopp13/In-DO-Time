@@ -204,13 +204,12 @@ export default function ReportsPage() {
     if (reportEntries.length === 0) return
 
     const csvEntries = reportEntries.map((e) => ({
-      client_name: e.client_name,
+      trail_name: e.client_name,
       project_name: e.project_name,
       start_time: e.start_time,
       end_time: e.end_time,
       duration_seconds: e.duration_seconds,
       notes: e.notes,
-      is_manual: e.is_manual,
       effectiveRate: e.effectiveRate,
     }))
 

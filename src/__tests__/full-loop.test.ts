@@ -98,20 +98,19 @@ describe('CSV Export', () => {
       const csv = generateCSV([])
       const headers = csv.split('\n')[0]
       expect(headers).toBe(
-        'Client,Project,Date,Start Time,End Time,Duration,Hours (Decimal),Hourly Rate,Cost,Notes,Type'
+        'Date,Trail,Project,Start,End,Duration,Rate (effective),Cost,Notes'
       )
     })
 
     it('generates CSV rows for timer entries', () => {
       const entries = [
         {
-          client_name: 'B.B.',
+          trail_name: 'B.B.',
           project_name: 'GA Gymnastics State Meets',
           start_time: '2025-01-15T09:00:00.000Z',
           end_time: '2025-01-15T10:30:00.000Z',
           duration_seconds: 5400,
           notes: 'Worked on header',
-          is_manual: false,
           effectiveRate: 30,
         },
       ]
@@ -122,42 +121,39 @@ describe('CSV Export', () => {
       expect(lines[1]).toContain('B.B.')
       expect(lines[1]).toContain('GA Gymnastics State Meets')
       expect(lines[1]).toContain('01:30:00') // duration
-      expect(lines[1]).toContain('1.50') // decimal hours
-      expect(lines[1]).toContain('$30.00') // hourly rate
+      expect(lines[1]).toContain('$30.00') // effective rate
       expect(lines[1]).toContain('$45.00') // cost (1.5h * $30)
       expect(lines[1]).toContain('Worked on header')
-      expect(lines[1]).toContain('Timer')
     })
 
-    it('marks manual entries as Manual type', () => {
+    it('omits rate and cost columns when effectiveRate is null', () => {
       const entries = [
         {
-          client_name: 'Mariah',
-          project_name: 'Evermore Equine',
+          trail_name: 'Hapag-Lloyd',
+          project_name: 'Internal Project',
           start_time: '2025-01-15T14:00:00.000Z',
           end_time: '2025-01-15T15:00:00.000Z',
           duration_seconds: 3600,
           notes: null,
-          is_manual: true,
-          effectiveRate: 45,
+          effectiveRate: null,
         },
       ]
 
       const csv = generateCSV(entries)
       const lines = csv.split('\n')
-      expect(lines[1]).toContain('Manual')
+      expect(lines[1]).toContain('Hapag-Lloyd')
+      expect(lines[1]).toContain('01:00:00')
     })
 
     it('handles entries with no notes', () => {
       const entries = [
         {
-          client_name: 'Test Client',
+          trail_name: 'B.B.',
           project_name: 'Test Project',
           start_time: '2025-01-15T09:00:00.000Z',
           end_time: '2025-01-15T10:00:00.000Z',
           duration_seconds: 3600,
           notes: null,
-          is_manual: false,
           effectiveRate: 50,
         },
       ]
@@ -172,20 +168,19 @@ describe('CSV Export', () => {
     it('escapes CSV values with commas', () => {
       const entries = [
         {
-          client_name: 'Client, Inc.',
+          trail_name: 'Trail, Inc.',
           project_name: 'Project "Alpha"',
           start_time: '2025-01-15T09:00:00.000Z',
           end_time: '2025-01-15T10:00:00.000Z',
           duration_seconds: 3600,
           notes: 'Note with, comma',
-          is_manual: false,
           effectiveRate: 50,
         },
       ]
 
       const csv = generateCSV(entries)
       // Values with commas/quotes should be escaped
-      expect(csv).toContain('"Client, Inc."')
+      expect(csv).toContain('"Trail, Inc."')
       expect(csv).toContain('"Project ""Alpha"""')
       expect(csv).toContain('"Note with, comma"')
     })
@@ -193,23 +188,21 @@ describe('CSV Export', () => {
     it('generates multiple rows for multiple entries', () => {
       const entries = [
         {
-          client_name: 'B.B.',
+          trail_name: 'B.B.',
           project_name: 'GA Gymnastics',
           start_time: '2025-01-15T09:00:00.000Z',
           end_time: '2025-01-15T10:00:00.000Z',
           duration_seconds: 3600,
           notes: null,
-          is_manual: false,
           effectiveRate: 30,
         },
         {
-          client_name: 'Mariah',
-          project_name: 'Evermore Equine',
+          trail_name: 'Evermore Equine',
+          project_name: 'Website Redesign',
           start_time: '2025-01-15T10:00:00.000Z',
           end_time: '2025-01-15T11:30:00.000Z',
           duration_seconds: 5400,
           notes: 'Design work',
-          is_manual: false,
           effectiveRate: 45,
         },
       ]
@@ -225,7 +218,7 @@ describe('CSV Export', () => {
       expect(generateCSVFilename()).toBe('in-do-time_export.csv')
     })
 
-    it('includes client name', () => {
+    it('includes trail name', () => {
       expect(generateCSVFilename('B.B.')).toBe('in-do-time_b.b._export.csv')
     })
 
@@ -385,13 +378,12 @@ describe('Full Loop: add client → start timer → stop → view log → export
     // Step 6: Export CSV
     const csvEntries = [
       {
-        client_name: mockClient.name,
+        trail_name: mockClient.name,
         project_name: mockProject.name,
         start_time: mockStoppedEntry.start_time,
         end_time: mockStoppedEntry.end_time!,
         duration_seconds: mockStoppedEntry.duration_seconds,
         notes: mockStoppedEntry.notes,
-        is_manual: mockStoppedEntry.is_manual,
         effectiveRate: mockClient.hourly_rate,
       },
     ]
@@ -403,7 +395,7 @@ describe('Full Loop: add client → start timer → stop → view log → export
     expect(lines).toHaveLength(2)
 
     // Verify header columns
-    expect(lines[0]).toContain('Client')
+    expect(lines[0]).toContain('Trail')
     expect(lines[0]).toContain('Project')
     expect(lines[0]).toContain('Duration')
     expect(lines[0]).toContain('Cost')
@@ -415,33 +407,30 @@ describe('Full Loop: add client → start timer → stop → view log → export
     expect(lines[1]).toContain('$45.00')
     expect(lines[1]).toContain('$30.00')
     expect(lines[1]).toContain('Working on header redesign')
-    expect(lines[1]).toContain('Timer')
 
     // Verify filename generation
     const filename = generateCSVFilename('B.B.', '2025-01-15', '2025-01-15')
     expect(filename).toBe('in-do-time_b.b._2025-01-15_to_2025-01-15_export.csv')
   })
 
-  it('handles multiple clients with different rates in a single export', () => {
+  it('handles multiple trails with different rates in a single export', () => {
     const entries = [
       {
-        client_name: 'B.B.',
+        trail_name: 'B.B.',
         project_name: 'GA Gymnastics State Meets',
         start_time: '2025-01-15T09:00:00.000Z',
         end_time: '2025-01-15T10:30:00.000Z',
         duration_seconds: 5400,
         notes: 'Header redesign',
-        is_manual: false,
         effectiveRate: 30,
       },
       {
-        client_name: 'Mariah',
-        project_name: 'Evermore Equine',
+        trail_name: 'Evermore Equine',
+        project_name: 'Website Redesign',
         start_time: '2025-01-15T11:00:00.000Z',
         end_time: '2025-01-15T12:00:00.000Z',
         duration_seconds: 3600,
         notes: 'Contact form',
-        is_manual: false,
         effectiveRate: 45,
       },
     ]
@@ -455,13 +444,9 @@ describe('Full Loop: add client → start timer → stop → view log → export
     expect(lines[1]).toContain('B.B.')
     expect(lines[1]).toContain('$45.00')
 
-    // Mariah entry: 1h * $45 = $45
-    expect(lines[2]).toContain('Mariah')
+    // Evermore entry: 1h * $45 = $45
+    expect(lines[2]).toContain('Evermore Equine')
     expect(lines[2]).toContain('$45.00')
-
-    // Both should be Timer type (not Manual)
-    expect(lines[1]).toContain('Timer')
-    expect(lines[2]).toContain('Timer')
   })
 
   it('verifies timer state transitions through the workflow', () => {

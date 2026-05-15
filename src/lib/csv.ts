@@ -1,54 +1,49 @@
 import { formatDuration, formatCurrency, calculateRunningCost } from './timer'
 
 interface CSVEntry {
-  client_name: string
+  trail_name: string
   project_name: string
   start_time: string
   end_time: string | null
   duration_seconds: number | null
   notes: string | null
-  is_manual: boolean
-  effectiveRate: number
+  effectiveRate: number | null
 }
 
 /**
  * Generate CSV content from time entries
- * Columns: Client, Project, Date, Start Time, End Time, Duration, Hourly Rate, Cost, Notes, Type
+ * Columns: Date, Trail, Project, Start, End, Duration, Rate (effective), Cost, Notes
  */
 export function generateCSV(entries: CSVEntry[]): string {
   const headers = [
-    'Client',
-    'Project',
     'Date',
-    'Start Time',
-    'End Time',
+    'Trail',
+    'Project',
+    'Start',
+    'End',
     'Duration',
-    'Hours (Decimal)',
-    'Hourly Rate',
+    'Rate (effective)',
     'Cost',
     'Notes',
-    'Type',
   ]
 
   const rows = entries.map((entry) => {
     const startDate = new Date(entry.start_time)
     const endDate = entry.end_time ? new Date(entry.end_time) : null
     const seconds = entry.duration_seconds ?? 0
-    const hours = seconds / 3600
-    const cost = calculateRunningCost(seconds, entry.effectiveRate)
+    const rate = entry.effectiveRate ?? 0
+    const cost = calculateRunningCost(seconds, rate)
 
     return [
-      escapeCSV(entry.client_name),
-      escapeCSV(entry.project_name),
       startDate.toLocaleDateString(),
+      escapeCSV(entry.trail_name),
+      escapeCSV(entry.project_name),
       startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
       endDate ? endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '',
       formatDuration(seconds),
-      hours.toFixed(2),
-      formatCurrency(entry.effectiveRate),
-      formatCurrency(cost),
+      entry.effectiveRate != null ? formatCurrency(entry.effectiveRate) : '',
+      entry.effectiveRate != null ? formatCurrency(cost) : '',
       escapeCSV(entry.notes || ''),
-      entry.is_manual ? 'Manual' : 'Timer',
     ]
   })
 
@@ -89,14 +84,14 @@ export function downloadCSV(csvContent: string, filename: string): void {
  * Generate a filename for the CSV export based on filters
  */
 export function generateCSVFilename(
-  clientName?: string,
+  trailName?: string,
   startDate?: string,
   endDate?: string
 ): string {
   const parts = ['in-do-time']
 
-  if (clientName) {
-    parts.push(clientName.toLowerCase().replace(/\s+/g, '-'))
+  if (trailName) {
+    parts.push(trailName.toLowerCase().replace(/\s+/g, '-'))
   }
 
   if (startDate) {

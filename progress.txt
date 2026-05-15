@@ -99,6 +99,16 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - 42/42 tests passed.
 ---
 
+## Iteration 8 - Task 8: Update `src/lib/csv.ts` for new schema
+- What was implemented: Rewrote `csv.ts` — renamed `client_name` → `trail_name` in `CSVEntry` interface, removed `is_manual` (no Type column in v2), made `effectiveRate: number | null` (null = non-billable trail, shows empty rate/cost cells). New column headers: Date, Trail, Project, Start, End, Duration, Rate (effective), Cost, Notes. Dropped old "Hours (Decimal)" and "Type" columns. Renamed `clientName` → `trailName` in `generateCSVFilename`. Fixed `reports/page.tsx` to pass `trail_name` (mapped from `e.client_name` since reports page is updated in Task 15). Updated all `generateCSV` calls in `full-loop.test.ts` — replaced `client_name` with `trail_name`, removed `is_manual`, updated header assertions, replaced "Manual/Timer type" tests with nullableRate test.
+- Files changed: `src/lib/csv.ts` (rewritten), `src/__tests__/full-loop.test.ts` (CSV describe block updated, full-loop CSV entries updated), `src/app/reports/page.tsx` (CSV entry mapping fixed), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - CSVEntry no longer includes `is_manual` — the Type column was dropped from v2 spec. Task 15 (reports page rewrite) should not re-add it.
+  - `effectiveRate: null` is the correct signal for non-billable trails — the function outputs empty strings for Rate and Cost columns rather than $0.00, which is more honest.
+  - `reports/page.tsx` still uses `e.client_name` internally (v1 interface) — Task 15 will fully rewrite it. The fix here is minimal to unblock typecheck.
+  - 42/42 tests passed.
+---
+
 ## Roadmap (For Future Context, Not This Run)
 
 ### Ralph Run #2 — Capture Layer

@@ -226,7 +226,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - `seed.ts`: if this is used at runtime for fresh installs, update it to insert trails not clients. If it's dev-only, mark it clearly.
   - Test: `npx tsc --noEmit` passes.
 
-- [ ] **Task 8: Update `src/lib/csv.ts` for new schema**
+- [x] **Task 8: Update `src/lib/csv.ts` for new schema**
   - Export joins `time_entries` → `projects` → `trails` (was `time_entries` → `projects` → `clients`).
   - Cost column in CSV uses `computeEntryCost` from `rates.ts` for each row.
   - CSV column headers: Date, Trail, Project, Start, End, Duration, Rate (effective), Cost, Notes.
