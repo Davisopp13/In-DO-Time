@@ -263,7 +263,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - "Today's summary" block: total hours (across all trails), total billable earnings, count of entries.
   - Test: `npx tsc --noEmit`, `npm run build`. Visual: timers can be started and stopped against seed trails.
 
-- [ ] **Task 13: Update `src/app/time-log/page.tsx`**
+- [x] **Task 13: Update `src/app/time-log/page.tsx`**
   - Filter UI: trail dropdown (replaces client dropdown), project dropdown (cascades from trail), date range.
   - Each entry row shows: trail, project, start, end, duration, computed cost (if billable), notes.
   - Edit/delete actions preserved from v1.

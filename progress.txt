@@ -195,3 +195,12 @@ Add the observation and journaling foundation:
 - Mobile polish
 
 ---
+
+## Iteration 13 - Task 13: Update `src/app/time-log/page.tsx`
+- What was implemented: Replaced all `client_*` references with `trail_*` in `TimeLogEntry` interface. Filter dropdown changed from "Client" to "Trail" with JS-side trail filtering (mock compatibility for dotted-path `.eq('projects.trail_id', ...)` filters). Project cascade from trail works in both filter and manual entry modal. Removed `effectiveRate` from entry; added `trail_is_billable` flag. Added `allRates` state + `getEffectiveRateFromCache` pure function (same pattern as Dashboard). Cost shown only for billable trails; day earnings shown only if > 0. Manual entry modal now has Trail → Project (cascaded, disabled until trail selected) → Start/End/Notes flow.
+- Files changed: `src/app/time-log/page.tsx` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - JS-side trail filter after fetch (in addition to query filter) is safe for mock compatibility with dotted-path filters like `eq('projects.trail_id', ...)`.
+  - `getEffectiveRateFromCache` pure function avoids N+1 queries — fetch all rates once, compute per-entry in render.
+  - Only pre-existing errors from `projects/page.tsx` remain (Task 14 fixes those). 42/42 tests passed.
+---

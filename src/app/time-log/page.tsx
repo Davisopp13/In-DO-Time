@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency, updateTimeEntry, deleteTimeEntry, createManualEntry } from '@/lib/timer'
+import { Rate } from '@/types/database'
 import EmptyState from '@/components/EmptyState'
 
 interface TimeLogEntry {
@@ -16,26 +17,63 @@ interface TimeLogEntry {
   is_manual: boolean
   project_name: string
   project_id: string
-  client_name: string
-  client_id: string
-  client_color: string
-  effectiveRate: number
+  trail_name: string
+  trail_id: string
+  trail_color: string
+  trail_is_billable: boolean
 }
 
-interface FilterOption {
+interface TrailOption {
   id: string
   name: string
 }
 
+interface ProjectOption {
+  id: string
+  name: string
+  trail_id: string
+}
+
+function getEffectiveRateFromCache(
+  rates: Rate[],
+  trailId: string,
+  projectId: string,
+  atDate: Date
+): number | null {
+  const dateStr = atDate.toISOString().split('T')[0]
+  const projectRates = rates.filter(
+    r =>
+      r.trail_id === trailId &&
+      r.project_id === projectId &&
+      r.effective_from <= dateStr &&
+      (r.effective_until === null || r.effective_until >= dateStr)
+  )
+  if (projectRates.length > 0) {
+    return projectRates.sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0].hourly_rate
+  }
+  const trailRates = rates.filter(
+    r =>
+      r.trail_id === trailId &&
+      r.project_id === null &&
+      r.effective_from <= dateStr &&
+      (r.effective_until === null || r.effective_until >= dateStr)
+  )
+  if (trailRates.length > 0) {
+    return trailRates.sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0].hourly_rate
+  }
+  return null
+}
+
 export default function TimeLogPage() {
   const [entries, setEntries] = useState<TimeLogEntry[]>([])
+  const [allRates, setAllRates] = useState<Rate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Filter state
-  const [clients, setClients] = useState<FilterOption[]>([])
-  const [projects, setProjects] = useState<FilterOption[]>([])
-  const [selectedClient, setSelectedClient] = useState('')
+  const [trails, setTrails] = useState<TrailOption[]>([])
+  const [projects, setProjects] = useState<ProjectOption[]>([])
+  const [selectedTrail, setSelectedTrail] = useState('')
   const [selectedProject, setSelectedProject] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -54,6 +92,7 @@ export default function TimeLogPage() {
 
   // Manual entry state
   const [showManualModal, setShowManualModal] = useState(false)
+  const [manualTrail, setManualTrail] = useState('')
   const [manualProject, setManualProject] = useState('')
   const [manualStartTime, setManualStartTime] = useState('')
   const [manualEndTime, setManualEndTime] = useState('')
@@ -61,23 +100,27 @@ export default function TimeLogPage() {
   const [manualSaving, setManualSaving] = useState(false)
   const [manualError, setManualError] = useState<string | null>(null)
 
-  // Load clients and projects for filter dropdowns
   useEffect(() => {
     async function loadFilterOptions() {
       const supabase = getSupabase()
-      const [clientsRes, projectsRes] = await Promise.all([
-        supabase.from('clients').select('id, name').order('name'),
-        supabase.from('projects').select('id, name, client_id').order('name'),
+      const [trailsRes, projectsRes, ratesRes] = await Promise.all([
+        supabase.from('trails').select('id, name').eq('status', 'active').order('name'),
+        supabase.from('projects').select('id, name, trail_id').eq('status', 'active').order('name'),
+        supabase.from('rates').select('*'),
       ])
-      if (clientsRes.data) setClients(clientsRes.data)
-      if (projectsRes.data) setProjects(projectsRes.data)
+      if (trailsRes.data) setTrails(trailsRes.data as TrailOption[])
+      if (projectsRes.data) setProjects(projectsRes.data as ProjectOption[])
+      if (ratesRes.data) setAllRates(ratesRes.data as Rate[])
     }
     loadFilterOptions()
   }, [])
 
-  // Filtered projects based on selected client
-  const filteredProjects = selectedClient
-    ? projects.filter((p) => (p as FilterOption & { client_id: string }).client_id === selectedClient)
+  const filteredProjects = selectedTrail
+    ? projects.filter(p => p.trail_id === selectedTrail)
+    : projects
+
+  const manualProjects = manualTrail
+    ? projects.filter(p => p.trail_id === manualTrail)
     : projects
 
   const loadEntries = useCallback(async () => {
@@ -85,7 +128,8 @@ export default function TimeLogPage() {
       setLoading(true)
       const supabase = getSupabase()
 
-      let query = supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query: any = supabase
         .from('time_entries')
         .select(`
           id, start_time, end_time, duration_seconds, notes, is_running, is_manual,
@@ -93,32 +137,24 @@ export default function TimeLogPage() {
           projects!inner(
             id,
             name,
-            hourly_rate_override,
-            client_id,
-            clients(id, name, hourly_rate, color)
+            trail_id,
+            trails(id, name, color, is_billable)
           )
         `)
         .order('start_time', { ascending: false })
 
-      // Apply date filters
       if (startDate) {
         query = query.gte('start_time', new Date(startDate).toISOString())
       }
       if (endDate) {
-        // End of the selected end date
         const end = new Date(endDate)
         end.setHours(23, 59, 59, 999)
         query = query.lte('start_time', end.toISOString())
       }
-
-      // Apply project filter via project_id
       if (selectedProject) {
         query = query.eq('project_id', selectedProject)
-      }
-
-      // Apply client filter via the projects relation
-      if (selectedClient && !selectedProject) {
-        query = query.eq('projects.client_id', selectedClient)
+      } else if (selectedTrail) {
+        query = query.eq('projects.trail_id', selectedTrail)
       }
 
       const { data, error: fetchError } = await query
@@ -127,7 +163,7 @@ export default function TimeLogPage() {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: TimeLogEntry[] = (data || []).map((e: any) => {
-        const client = e.projects.clients || { name: 'Unknown', hourly_rate: 0, color: '#000000' }
+        const trail = e.projects?.trails || { name: 'Unknown', color: '#6B7280', is_billable: false }
         return {
           id: e.id,
           start_time: e.start_time,
@@ -137,35 +173,39 @@ export default function TimeLogPage() {
           is_running: e.is_running,
           is_manual: e.is_manual,
           project_id: e.project_id,
-          project_name: e.projects.name,
-          client_id: e.projects.client_id,
-          client_name: client.name,
-          client_color: client.color,
-          effectiveRate: e.projects.hourly_rate_override ?? client.hourly_rate,
+          project_name: e.projects?.name ?? 'Unknown',
+          trail_id: e.projects?.trail_id ?? '',
+          trail_name: trail.name,
+          trail_color: trail.color,
+          trail_is_billable: trail.is_billable,
         }
       })
 
-      setEntries(mapped)
+      // JS-side trail filter (mock compatibility: dotted-path filters may not be applied)
+      const result = selectedTrail && !selectedProject
+        ? mapped.filter(e => e.trail_id === selectedTrail)
+        : mapped
+
+      setEntries(result)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load time entries')
     } finally {
       setLoading(false)
     }
-  }, [selectedClient, selectedProject, startDate, endDate])
+  }, [selectedTrail, selectedProject, startDate, endDate])
 
   useEffect(() => {
     loadEntries()
   }, [loadEntries])
 
   const clearFilters = () => {
-    setSelectedClient('')
+    setSelectedTrail('')
     setSelectedProject('')
     setStartDate('')
     setEndDate('')
   }
 
-  // Convert ISO string to datetime-local input value (YYYY-MM-DDTHH:MM)
   const toDatetimeLocal = (isoString: string) => {
     const d = new Date(isoString)
     const pad = (n: number) => n.toString().padStart(2, '0')
@@ -229,6 +269,7 @@ export default function TimeLogPage() {
 
   const openManualModal = () => {
     setShowManualModal(true)
+    setManualTrail('')
     setManualProject('')
     setManualStartTime('')
     setManualEndTime('')
@@ -274,14 +315,13 @@ export default function TimeLogPage() {
     loadEntries()
   }
 
-  const hasFilters = selectedClient || selectedProject || startDate || endDate
+  const hasFilters = selectedTrail || selectedProject || startDate || endDate
 
-  // Group entries by date
   const groupedEntries = entries.reduce<Record<string, TimeLogEntry[]>>((groups, entry) => {
     const d = new Date(entry.start_time)
-    const formattedDate = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    if (!groups[formattedDate]) groups[formattedDate] = []
-    groups[formattedDate].push(entry)
+    const label = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    if (!groups[label]) groups[label] = []
+    groups[label].push(entry)
     return groups
   }, {})
 
@@ -297,10 +337,7 @@ export default function TimeLogPage() {
     return (
       <div className="glass-card border-red-500/30 bg-red-900/10 p-6">
         <p className="text-red-400">Failed to load time entries: {error}</p>
-        <button
-          onClick={loadEntries}
-          className="mt-2 text-sm font-medium text-white hover:text-accent"
-        >
+        <button onClick={loadEntries} className="mt-2 text-sm font-medium text-white hover:text-accent">
           Retry
         </button>
       </div>
@@ -328,26 +365,21 @@ export default function TimeLogPage() {
       {/* Filters */}
       <div className="mb-6 glass-card p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
-          {/* Client filter */}
-          <div className="col-span-1 sm:col-span-1">
-            <label className="mb-1 block text-xs font-medium text-text-muted">Client</label>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Trail</label>
             <select
-              value={selectedClient}
-              onChange={(e) => {
-                setSelectedClient(e.target.value)
-                setSelectedProject('')
-              }}
+              value={selectedTrail}
+              onChange={(e) => { setSelectedTrail(e.target.value); setSelectedProject('') }}
               className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="" className="bg-surface dark:bg-slate-900">All Clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id} className="bg-surface dark:bg-slate-900">{c.name}</option>
+              <option value="" className="bg-surface dark:bg-slate-900">All Trails</option>
+              {trails.map(t => (
+                <option key={t.id} value={t.id} className="bg-surface dark:bg-slate-900">{t.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Project filter */}
-          <div className="col-span-1 sm:col-span-1">
+          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Project</label>
             <select
               value={selectedProject}
@@ -355,13 +387,12 @@ export default function TimeLogPage() {
               className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="" className="bg-surface dark:bg-slate-900">All Projects</option>
-              {filteredProjects.map((p) => (
+              {filteredProjects.map(p => (
                 <option key={p.id} value={p.id} className="bg-surface dark:bg-slate-900">{p.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Start date */}
           <div className="min-w-0">
             <label className="mb-1 block text-xs font-medium text-text-muted">From</label>
             <input
@@ -372,7 +403,6 @@ export default function TimeLogPage() {
             />
           </div>
 
-          {/* End date */}
           <div className="min-w-0">
             <label className="mb-1 block text-xs font-medium text-text-muted">To</label>
             <input
@@ -383,7 +413,6 @@ export default function TimeLogPage() {
             />
           </div>
 
-          {/* Clear filters */}
           {hasFilters && (
             <div className="col-span-1 flex items-end sm:col-span-2 lg:col-span-1">
               <button
@@ -400,10 +429,7 @@ export default function TimeLogPage() {
       {entries.length === 0 ? (
         <EmptyState title={hasFilters ? 'No matching entries' : 'No time entries yet'}>
           {hasFilters ? (
-            <button
-              onClick={clearFilters}
-              className="font-medium text-accent hover:text-accent-light"
-            >
+            <button onClick={clearFilters} className="font-medium text-accent hover:text-accent-light">
               Clear filters
             </button>
           ) : (
@@ -419,61 +445,50 @@ export default function TimeLogPage() {
       ) : (
         <div className="space-y-8">
           {Object.entries(groupedEntries).map(([date, dayEntries]) => {
-            const dayTotal = dayEntries.reduce(
-              (sum, e) => sum + (e.duration_seconds ?? 0),
-              0
-            )
-            const dayEarnings = dayEntries.reduce(
-              (sum, e) =>
-                sum + calculateRunningCost(e.duration_seconds ?? 0, e.effectiveRate),
-              0
-            )
+            const dayTotal = dayEntries.reduce((sum, e) => sum + (e.duration_seconds ?? 0), 0)
+            const dayEarnings = dayEntries.reduce((sum, e) => {
+              if (!e.trail_is_billable || !e.duration_seconds) return sum
+              const rate = getEffectiveRateFromCache(allRates, e.trail_id, e.project_id, new Date(e.start_time))
+              if (rate === null) return sum
+              return sum + calculateRunningCost(e.duration_seconds, rate)
+            }, 0)
 
             return (
               <div key={date}>
-                {/* Date header - Trail Marker Style */}
                 <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-2 pl-4 border-l-4 border-slate-600">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-text-muted">
-                    {date}
-                  </h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-text-muted">{date}</h2>
                   <div className="flex items-center gap-4 text-sm font-medium text-text-muted">
                     <span className="font-mono text-text/50 dark:text-white/50">{formatDuration(dayTotal)}</span>
-                    <span className="text-accent">{formatCurrency(dayEarnings)}</span>
+                    {dayEarnings > 0 && <span className="text-accent">{formatCurrency(dayEarnings)}</span>}
                   </div>
                 </div>
 
-                {/* Entries for this date */}
                 <div className="glass-panel overflow-hidden">
                   {dayEntries.map((entry, index) => {
                     const duration = entry.duration_seconds ?? 0
-                    const cost = calculateRunningCost(duration, entry.effectiveRate)
-                    const startDate = new Date(entry.start_time)
-                    const endDate = entry.end_time ? new Date(entry.end_time) : null
-                    const startTimeStr = startDate.toLocaleTimeString([], {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })
-                    const endTimeStr = endDate
-                      ? endDate.toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })
+                    const rate = entry.trail_is_billable
+                      ? getEffectiveRateFromCache(allRates, entry.trail_id, entry.project_id, new Date(entry.start_time))
+                      : null
+                    const cost = rate !== null && !entry.is_running ? calculateRunningCost(duration, rate) : null
+                    const startDt = new Date(entry.start_time)
+                    const endDt = entry.end_time ? new Date(entry.end_time) : null
+                    const startTimeStr = startDt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                    const endTimeStr = endDt
+                      ? endDt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
                       : 'Running'
 
                     return (
                       <div
                         key={entry.id}
-                        className={`px-4 sm:px-6 py-4 border-b border-border last:border-0 transition-colors hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]' /* Zebra Striping */
-                          }`}
+                        className={`px-4 sm:px-6 py-4 border-b border-border last:border-0 transition-colors hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${
+                          index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]'
+                        }`}
                       >
                         <div className="flex items-start gap-3 sm:gap-4">
-                          {/* Client color indicator */}
                           <span
                             className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                            style={{ backgroundColor: entry.client_color }}
+                            style={{ backgroundColor: entry.trail_color }}
                           />
-
-                          {/* Main info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="truncate text-base font-medium text-text dark:text-white">
@@ -495,16 +510,17 @@ export default function TimeLogPage() {
                               )}
                             </div>
                             <p className="text-sm text-text-muted mt-0.5">
-                              {entry.client_name} <span className="mx-1 text-text-muted/20 dark:text-white/20">|</span> {startTimeStr} – {endTimeStr}
+                              {entry.trail_name}{' '}
+                              <span className="mx-1 text-text-muted/20 dark:text-white/20">|</span>{' '}
+                              {startTimeStr} – {endTimeStr}
                             </p>
                             {entry.notes && (
                               <p className="text-sm text-text/60 dark:text-white/60 mt-1 italic">
-                                "{entry.notes}"
+                                &quot;{entry.notes}&quot;
                               </p>
                             )}
                           </div>
 
-                          {/* Edit + Delete buttons + Duration/Cost */}
                           <div className="flex flex-shrink-0 items-center gap-2 sm:gap-4">
                             {!entry.is_running && (
                               <div className="hidden sm:flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
@@ -528,19 +544,16 @@ export default function TimeLogPage() {
                                 </button>
                               </div>
                             )}
-
-                            {/* Duration + Cost */}
                             <div className="text-right min-w-[70px] sm:min-w-[80px]">
                               <p className="font-mono text-sm font-medium text-text dark:text-white">
                                 {entry.is_running ? '—' : formatDuration(duration)}
                               </p>
-                              <p className="text-xs text-accent">
-                                {entry.is_running ? '—' : formatCurrency(cost)}
-                              </p>
+                              {cost !== null && (
+                                <p className="text-xs text-accent">{formatCurrency(cost)}</p>
+                              )}
                             </div>
                           </div>
                         </div>
-                        {/* Mobile action buttons */}
                         {!entry.is_running && (
                           <div className="sm:hidden mt-3 ml-6 flex gap-3">
                             <button
@@ -576,9 +589,9 @@ export default function TimeLogPage() {
               This will permanently delete the time entry for:
             </p>
             <p className="mb-6 text-sm font-medium text-text dark:text-white">
-              {deletingEntry.project_name} — {deletingEntry.client_name}
+              {deletingEntry.project_name} — {deletingEntry.trail_name}
               <br />
-              <span className="font-normal text-text-muted opactiy-80">
+              <span className="font-normal text-text-muted opacity-80">
                 {new Date(deletingEntry.start_time).toLocaleDateString()}
               </span>
             </p>
@@ -615,14 +628,29 @@ export default function TimeLogPage() {
 
             <div className="space-y-4">
               <div>
+                <label className="mb-1 block text-sm font-medium text-text-muted">Trail</label>
+                <select
+                  value={manualTrail}
+                  onChange={(e) => { setManualTrail(e.target.value); setManualProject('') }}
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="" className="bg-surface dark:bg-slate-900">Select a trail...</option>
+                  {trails.map(t => (
+                    <option key={t.id} value={t.id} className="bg-surface dark:bg-slate-900">{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="mb-1 block text-sm font-medium text-text-muted">Project</label>
                 <select
                   value={manualProject}
                   onChange={(e) => setManualProject(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  disabled={!manualTrail}
+                  className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="" className="bg-surface dark:bg-slate-900">Select a project...</option>
-                  {projects.map((p) => (
+                  {manualProjects.map(p => (
                     <option key={p.id} value={p.id} className="bg-surface dark:bg-slate-900">{p.name}</option>
                   ))}
                 </select>
@@ -654,7 +682,7 @@ export default function TimeLogPage() {
                   type="text"
                   value={manualNotes}
                   onChange={(e) => setManualNotes(e.target.value)}
-                  placeholder="Optional notes"
+                  placeholder="Optional invoice description"
                   className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                 />
               </div>
@@ -685,7 +713,7 @@ export default function TimeLogPage() {
           <div className="w-full max-w-md glass-card p-6 shadow-2xl bg-surface dark:bg-[#0F172A]">
             <h2 className="mb-4 text-lg font-semibold text-text dark:text-white">Edit Time Entry</h2>
             <p className="mb-4 text-sm text-text-muted">
-              {editingEntry.project_name} — {editingEntry.client_name}
+              {editingEntry.project_name} — {editingEntry.trail_name}
             </p>
 
             {editError && (
@@ -723,7 +751,7 @@ export default function TimeLogPage() {
                   type="text"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Optional notes"
+                  placeholder="Optional invoice description"
                   className="w-full rounded-lg border border-border bg-surface/50 dark:bg-black/20 px-3 py-2 text-sm text-text dark:text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-text-muted/50 dark:placeholder:text-white/20"
                 />
               </div>
