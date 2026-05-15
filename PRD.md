@@ -190,7 +190,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Test: SQL file parses.
   - Acceptance: file contains 6 trail INSERTs and 2 rate INSERTs (one for each client trail).
 
-- [ ] **Task 3: Rewrite `src/types/database.ts`**
+- [x] **Task 3: Rewrite `src/types/database.ts`**
   - Replace the v1 `Database` type entirely. Define types for `trails`, `projects`, `rates`, `time_entries` matching the new schema exactly (Row/Insert/Update for each).
   - Export convenience types: `Trail`, `TrailInsert`, `TrailUpdate`, `Project`, `ProjectInsert`, `ProjectUpdate`, `Rate`, `RateInsert`, `RateUpdate`, `TimeEntry`, `TimeEntryInsert`, `TimeEntryUpdate`.
   - Delete the old `Client` exports entirely.

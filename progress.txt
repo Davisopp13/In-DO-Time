@@ -70,6 +70,16 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - display_order 1-6 matches the PRD table order.
 ---
 
+## Iteration 3 - Task 3: Rewrite `src/types/database.ts`
+- What was implemented: Replaced the v1 `Database` type entirely. Defined types for `trails`, `projects`, `rates`, `time_entries` matching the new schema. Exported convenience types: Trail, TrailInsert, TrailUpdate, Project, ProjectInsert, ProjectUpdate, Rate, RateInsert, RateUpdate, TimeEntry, TimeEntryInsert, TimeEntryUpdate. Deleted old `Client` exports.
+- Files changed: `src/types/database.ts` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `npx tsc --noEmit` failed in other files (clients/page.tsx, projects/page.tsx, mockData.ts, supabaseDemo.ts) referencing old `Client` type — exactly as PRD predicted. These are fixed in later tasks.
+  - `rates` table has no `updated_at` column by design (rows are immutable).
+  - `projects.status` now includes `'completed'` as a valid value (v1 only had `'active'|'archived'`).
+  - `.next/types/routes.d` duplicate identifier errors are pre-existing generated-file artifacts, not caused by this change.
+---
+
 ## Roadmap (For Future Context, Not This Run)
 
 ### Ralph Run #2 — Capture Layer
