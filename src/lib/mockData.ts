@@ -5,13 +5,13 @@
 
 import type { Database } from '@/types/database'
 
-type Client = Database['public']['Tables']['clients']['Row']
+type Trail = Database['public']['Tables']['trails']['Row']
+type Rate = Database['public']['Tables']['rates']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
 type TimeEntry = Database['public']['Tables']['time_entries']['Row']
 
 // Generate consistent UUIDs for demo data
 const generateId = (seed: string): string => {
-  // Simple deterministic UUID generation for demo
   const hash = seed.split('').reduce((acc, char) => {
     return ((acc << 5) - acc) + char.charCodeAt(0)
   }, 0)
@@ -19,101 +19,165 @@ const generateId = (seed: string): string => {
   return `${hex.slice(0, 8)}-${hex.slice(0, 4)}-4${hex.slice(0, 3)}-a${hex.slice(0, 3)}-${hex.slice(0, 12)}`.slice(0, 36)
 }
 
-// Demo Clients
-export const mockClients: Client[] = [
+// Demo Trails (matching seed data)
+export const mockTrails: Trail[] = [
   {
-    id: generateId('client-do-code-lab'),
-    name: 'DO Code Lab',
-    hourly_rate: 85.00,
-    color: '#3B82F6', // Blue
+    id: generateId('trail-bb'),
+    name: 'B.B.',
+    slug: 'bb',
+    description: null,
+    kind: 'client',
+    is_billable: true,
+    color: '#3A7D44',
     status: 'active',
-    created_at: new Date('2024-01-15T10:00:00Z').toISOString(),
-    updated_at: new Date('2024-01-15T10:00:00Z').toISOString(),
+    display_order: 1,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
   },
   {
-    id: generateId('client-acme-corp'),
-    name: 'Acme Corp',
-    hourly_rate: 100.00,
-    color: '#10B981', // Green
+    id: generateId('trail-evermore-equine'),
+    name: 'Evermore Equine',
+    slug: 'evermore-equine',
+    description: null,
+    kind: 'client',
+    is_billable: true,
+    color: '#8B4513',
     status: 'active',
-    created_at: new Date('2024-01-20T14:30:00Z').toISOString(),
-    updated_at: new Date('2024-01-20T14:30:00Z').toISOString(),
+    display_order: 2,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
   },
   {
-    id: generateId('client-techstart'),
-    name: 'TechStart Inc',
-    hourly_rate: 75.00,
-    color: '#8B5CF6', // Purple
+    id: generateId('trail-hapag-lloyd'),
+    name: 'Hapag-Lloyd',
+    slug: 'hapag-lloyd',
+    description: null,
+    kind: 'employer',
+    is_billable: false,
+    color: '#003D6B',
     status: 'active',
-    created_at: new Date('2024-02-01T09:15:00Z').toISOString(),
-    updated_at: new Date('2024-02-01T09:15:00Z').toISOString(),
+    display_order: 3,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
   },
   {
-    id: generateId('client-creative-studio'),
-    name: 'Creative Studio',
-    hourly_rate: 90.00,
-    color: '#F59E0B', // Amber
+    id: generateId('trail-dobot'),
+    name: 'DObot',
+    slug: 'dobot',
+    description: null,
+    kind: 'project',
+    is_billable: false,
+    color: '#6B46C1',
     status: 'active',
-    created_at: new Date('2024-02-05T11:00:00Z').toISOString(),
-    updated_at: new Date('2024-02-05T11:00:00Z').toISOString(),
+    display_order: 4,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+  },
+  {
+    id: generateId('trail-in-do-time'),
+    name: 'In DO Time',
+    slug: 'in-do-time',
+    description: null,
+    kind: 'project',
+    is_billable: false,
+    color: '#1B5E20',
+    status: 'active',
+    display_order: 5,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+  },
+  {
+    id: generateId('trail-personal'),
+    name: 'Personal',
+    slug: 'personal',
+    description: null,
+    kind: 'personal',
+    is_billable: false,
+    color: '#6B7280',
+    status: 'active',
+    display_order: 6,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+  },
+]
+
+// Demo Rates (one per client trail at $50/hr effective 2026-01-01)
+export const mockRates: Rate[] = [
+  {
+    id: generateId('rate-bb'),
+    trail_id: generateId('trail-bb'),
+    project_id: null,
+    hourly_rate: 50.00,
+    effective_from: '2026-01-01',
+    effective_until: null,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
+  },
+  {
+    id: generateId('rate-evermore-equine'),
+    trail_id: generateId('trail-evermore-equine'),
+    project_id: null,
+    hourly_rate: 50.00,
+    effective_from: '2026-01-01',
+    effective_until: null,
+    created_at: new Date('2026-01-01T00:00:00Z').toISOString(),
   },
 ]
 
 // Demo Projects
 export const mockProjects: Project[] = [
   {
-    id: generateId('project-website-redesign'),
-    client_id: generateId('client-do-code-lab'),
+    id: generateId('project-bb-website'),
+    trail_id: generateId('trail-bb'),
     name: 'Website Redesign',
-    hourly_rate_override: null,
+    description: null,
     status: 'active',
-    created_at: new Date('2024-01-15T10:30:00Z').toISOString(),
-    updated_at: new Date('2024-01-15T10:30:00Z').toISOString(),
+    created_at: new Date('2026-01-15T10:30:00Z').toISOString(),
+    updated_at: new Date('2026-01-15T10:30:00Z').toISOString(),
   },
   {
-    id: generateId('project-mobile-app'),
-    client_id: generateId('client-do-code-lab'),
+    id: generateId('project-bb-mobile'),
+    trail_id: generateId('trail-bb'),
     name: 'Mobile App Development',
-    hourly_rate_override: 95.00,
+    description: null,
     status: 'active',
-    created_at: new Date('2024-01-16T13:00:00Z').toISOString(),
-    updated_at: new Date('2024-01-16T13:00:00Z').toISOString(),
+    created_at: new Date('2026-01-16T13:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-16T13:00:00Z').toISOString(),
   },
   {
-    id: generateId('project-ecommerce'),
-    client_id: generateId('client-acme-corp'),
-    name: 'E-commerce Platform',
-    hourly_rate_override: null,
+    id: generateId('project-evermore-portal'),
+    trail_id: generateId('trail-evermore-equine'),
+    name: 'Client Portal',
+    description: null,
     status: 'active',
-    created_at: new Date('2024-01-20T15:00:00Z').toISOString(),
-    updated_at: new Date('2024-01-20T15:00:00Z').toISOString(),
+    created_at: new Date('2026-01-20T15:00:00Z').toISOString(),
+    updated_at: new Date('2026-01-20T15:00:00Z').toISOString(),
   },
   {
-    id: generateId('project-api-integration'),
-    client_id: generateId('client-techstart'),
-    name: 'API Integration',
-    hourly_rate_override: null,
+    id: generateId('project-hapag-dashboard'),
+    trail_id: generateId('trail-hapag-lloyd'),
+    name: 'Logistics Dashboard',
+    description: null,
     status: 'active',
-    created_at: new Date('2024-02-01T10:00:00Z').toISOString(),
-    updated_at: new Date('2024-02-01T10:00:00Z').toISOString(),
+    created_at: new Date('2026-02-01T10:00:00Z').toISOString(),
+    updated_at: new Date('2026-02-01T10:00:00Z').toISOString(),
   },
   {
-    id: generateId('project-branding'),
-    client_id: generateId('client-creative-studio'),
-    name: 'Brand Identity',
-    hourly_rate_override: null,
+    id: generateId('project-dobot-core'),
+    trail_id: generateId('trail-dobot'),
+    name: 'Core Development',
+    description: null,
     status: 'active',
-    created_at: new Date('2024-02-05T12:00:00Z').toISOString(),
-    updated_at: new Date('2024-02-05T12:00:00Z').toISOString(),
+    created_at: new Date('2026-02-05T12:00:00Z').toISOString(),
+    updated_at: new Date('2026-02-05T12:00:00Z').toISOString(),
   },
   {
-    id: generateId('project-ui-library'),
-    client_id: generateId('client-techstart'),
-    name: 'UI Component Library',
-    hourly_rate_override: 80.00,
+    id: generateId('project-idt-foundation'),
+    trail_id: generateId('trail-in-do-time'),
+    name: 'Foundation Rebuild',
+    description: null,
     status: 'active',
-    created_at: new Date('2024-02-03T14:00:00Z').toISOString(),
-    updated_at: new Date('2024-02-03T14:00:00Z').toISOString(),
+    created_at: new Date('2026-02-10T09:00:00Z').toISOString(),
+    updated_at: new Date('2026-02-10T09:00:00Z').toISOString(),
   },
 ]
 
@@ -125,78 +189,87 @@ const generateTimeEntries = (): TimeEntry[] => {
   yesterday.setDate(yesterday.getDate() - 1)
 
   return [
-    // Today's completed entries
     {
       id: generateId('entry-today-1'),
-      project_id: generateId('project-website-redesign'),
-      start_time: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(), // 9 AM
-      end_time: new Date(today.getTime() + 11 * 60 * 60 * 1000).toISOString(), // 11 AM
-      duration_seconds: 2 * 60 * 60, // 2 hours
+      project_id: generateId('project-bb-website'),
+      start_time: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date(today.getTime() + 11 * 60 * 60 * 1000).toISOString(),
+      duration_seconds: 2 * 60 * 60,
       notes: 'Completed homepage mockups and design system setup',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(today.getTime() + 11 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: generateId('entry-today-2'),
-      project_id: generateId('project-ecommerce'),
-      start_time: new Date(today.getTime() + 11.5 * 60 * 60 * 1000).toISOString(), // 11:30 AM
-      end_time: new Date(today.getTime() + 13 * 60 * 60 * 1000).toISOString(), // 1 PM
-      duration_seconds: 1.5 * 60 * 60, // 1.5 hours
-      notes: 'Implemented shopping cart functionality',
+      project_id: generateId('project-evermore-portal'),
+      start_time: new Date(today.getTime() + 11.5 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date(today.getTime() + 13 * 60 * 60 * 1000).toISOString(),
+      duration_seconds: 1.5 * 60 * 60,
+      notes: 'Implemented booking calendar functionality',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(today.getTime() + 11.5 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(today.getTime() + 13 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: generateId('entry-today-3'),
-      project_id: generateId('project-api-integration'),
-      start_time: new Date(today.getTime() + 14 * 60 * 60 * 1000).toISOString(), // 2 PM
-      end_time: new Date(today.getTime() + 15.25 * 60 * 60 * 1000).toISOString(), // 3:15 PM
-      duration_seconds: 1.25 * 60 * 60, // 1.25 hours
-      notes: 'REST API endpoints and authentication',
+      project_id: generateId('project-hapag-dashboard'),
+      start_time: new Date(today.getTime() + 14 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date(today.getTime() + 15.25 * 60 * 60 * 1000).toISOString(),
+      duration_seconds: 1.25 * 60 * 60,
+      notes: 'REST API endpoints for vessel tracking',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(today.getTime() + 14 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(today.getTime() + 15.25 * 60 * 60 * 1000).toISOString(),
     },
-
-    // Yesterday's entries
     {
       id: generateId('entry-yesterday-1'),
-      project_id: generateId('project-mobile-app'),
+      project_id: generateId('project-bb-mobile'),
       start_time: new Date(yesterday.getTime() + 9 * 60 * 60 * 1000).toISOString(),
       end_time: new Date(yesterday.getTime() + 12 * 60 * 60 * 1000).toISOString(),
-      duration_seconds: 3 * 60 * 60, // 3 hours
+      duration_seconds: 3 * 60 * 60,
       notes: 'User authentication flow and state management',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(yesterday.getTime() + 9 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(yesterday.getTime() + 12 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: generateId('entry-yesterday-2'),
-      project_id: generateId('project-website-redesign'),
+      project_id: generateId('project-idt-foundation'),
       start_time: new Date(yesterday.getTime() + 13 * 60 * 60 * 1000).toISOString(),
       end_time: new Date(yesterday.getTime() + 16.5 * 60 * 60 * 1000).toISOString(),
-      duration_seconds: 3.5 * 60 * 60, // 3.5 hours
-      notes: 'Responsive layouts for tablet and mobile',
+      duration_seconds: 3.5 * 60 * 60,
+      notes: 'Schema reset and type definitions',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(yesterday.getTime() + 13 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(yesterday.getTime() + 16.5 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: generateId('entry-yesterday-3'),
-      project_id: generateId('project-branding'),
+      project_id: generateId('project-dobot-core'),
       start_time: new Date(yesterday.getTime() + 10 * 60 * 60 * 1000).toISOString(),
       end_time: new Date(yesterday.getTime() + 12 * 60 * 60 * 1000).toISOString(),
-      duration_seconds: 2 * 60 * 60, // 2 hours
-      notes: 'Logo concepts and color palette exploration',
+      duration_seconds: 2 * 60 * 60,
+      notes: 'Prompt engineering for observation parsing',
       is_manual: false,
       is_running: false,
+      source: 'manual',
+      source_observation_id: null,
       created_at: new Date(yesterday.getTime() + 10 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(yesterday.getTime() + 12 * 60 * 60 * 1000).toISOString(),
     },
@@ -207,40 +280,68 @@ export const mockTimeEntries: TimeEntry[] = generateTimeEntries()
 
 // In-memory store for demo mode (allows CRUD operations to persist during session)
 export class MockDataStore {
-  private clients: Map<string, Client>
+  private trails: Map<string, Trail>
+  private rates: Map<string, Rate>
   private projects: Map<string, Project>
   private timeEntries: Map<string, TimeEntry>
 
   constructor() {
-    this.clients = new Map(mockClients.map(c => [c.id, { ...c }]))
+    this.trails = new Map(mockTrails.map(t => [t.id, { ...t }]))
+    this.rates = new Map(mockRates.map(r => [r.id, { ...r }]))
     this.projects = new Map(mockProjects.map(p => [p.id, { ...p }]))
     this.timeEntries = new Map(mockTimeEntries.map(e => [e.id, { ...e }]))
   }
 
-  // Clients
-  getClients(): Client[] {
-    return Array.from(this.clients.values())
+  // Trails
+  getTrails(): Trail[] {
+    return Array.from(this.trails.values())
   }
 
-  getClient(id: string): Client | undefined {
-    return this.clients.get(id)
+  getTrail(id: string): Trail | undefined {
+    return this.trails.get(id)
   }
 
-  addClient(client: Client): Client {
-    this.clients.set(client.id, client)
-    return client
+  addTrail(trail: Trail): Trail {
+    this.trails.set(trail.id, trail)
+    return trail
   }
 
-  updateClient(id: string, updates: Partial<Client>): Client | undefined {
-    const client = this.clients.get(id)
-    if (!client) return undefined
-    const updated = { ...client, ...updates, updated_at: new Date().toISOString() }
-    this.clients.set(id, updated)
+  updateTrail(id: string, updates: Partial<Trail>): Trail | undefined {
+    const trail = this.trails.get(id)
+    if (!trail) return undefined
+    const updated = { ...trail, ...updates, updated_at: new Date().toISOString() }
+    this.trails.set(id, updated)
     return updated
   }
 
-  deleteClient(id: string): boolean {
-    return this.clients.delete(id)
+  deleteTrail(id: string): boolean {
+    return this.trails.delete(id)
+  }
+
+  // Rates
+  getRates(): Rate[] {
+    return Array.from(this.rates.values())
+  }
+
+  getRate(id: string): Rate | undefined {
+    return this.rates.get(id)
+  }
+
+  addRate(rate: Rate): Rate {
+    this.rates.set(rate.id, rate)
+    return rate
+  }
+
+  updateRate(id: string, updates: Partial<Rate>): Rate | undefined {
+    const rate = this.rates.get(id)
+    if (!rate) return undefined
+    const updated = { ...rate, ...updates }
+    this.rates.set(id, updated)
+    return updated
+  }
+
+  deleteRate(id: string): boolean {
+    return this.rates.delete(id)
   }
 
   // Projects

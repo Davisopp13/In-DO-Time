@@ -214,7 +214,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Test: `npx tsc --noEmit` passes for this file.
   - Acceptance: no `client` or `client_id` references remain in `timer.ts`. All inserts include `source`.
 
-- [ ] **Task 6: Update `src/lib/supabaseDemo.ts` for new schema**
+- [x] **Task 6: Update `src/lib/supabaseDemo.ts` for new schema**
   - Replace mock client data with mock trail data matching the seed table.
   - Update all queries the demo client handles (`from('clients')` → `from('trails')`, add `from('rates')`, etc.).
   - Mock rate lookups must work for the demo client trails.

@@ -10,8 +10,6 @@ import type { Database } from '@/types/database'
 type Tables = Database['public']['Tables']
 type TableName = keyof Tables
 type Row<T extends TableName> = Tables[T]['Row']
-type Insert<T extends TableName> = Tables[T]['Insert']
-type Update<T extends TableName> = Tables[T]['Update']
 
 // Mock PostgrestError
 interface MockPostgrestError {
@@ -164,7 +162,6 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
     onfulfilled?: (value: { data: T[] | null; error: MockPostgrestError | null; count?: number | null }) => unknown
   ): Promise<unknown> {
     return this.execute().then((result) => {
-      // Normalize result to always return arrays for the then handler
       const normalizedResult = {
         ...result,
         data: Array.isArray(result.data) ? result.data : (result.data ? [result.data] : null),
@@ -191,11 +188,13 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             id,
             ...value,
             created_at: timestamp,
-            updated_at: timestamp,
+            ...(this.tableName !== 'rates' ? { updated_at: timestamp } : {}),
           } as T
 
-          if (this.tableName === 'clients') {
-            store.addClient(newItem as Tables['clients']['Row'])
+          if (this.tableName === 'trails') {
+            store.addTrail(newItem as Tables['trails']['Row'])
+          } else if (this.tableName === 'rates') {
+            store.addRate(newItem as Tables['rates']['Row'])
           } else if (this.tableName === 'projects') {
             store.addProject(newItem as Tables['projects']['Row'])
           } else if (this.tableName === 'time_entries') {
@@ -210,8 +209,10 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
 
       // Get base data
       let data: T[] = []
-      if (this.tableName === 'clients') {
-        data = store.getClients() as T[]
+      if (this.tableName === 'trails') {
+        data = store.getTrails() as T[]
+      } else if (this.tableName === 'rates') {
+        data = store.getRates() as T[]
       } else if (this.tableName === 'projects') {
         data = store.getProjects() as T[]
       } else if (this.tableName === 'time_entries') {
@@ -228,8 +229,10 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
           const id = (item as Record<string, unknown>).id as string
           let updatedItem: T | undefined
 
-          if (this.tableName === 'clients') {
-            updatedItem = store.updateClient(id, this.updateValues as Partial<Tables['clients']['Row']>) as T | undefined
+          if (this.tableName === 'trails') {
+            updatedItem = store.updateTrail(id, this.updateValues as Partial<Tables['trails']['Row']>) as T | undefined
+          } else if (this.tableName === 'rates') {
+            updatedItem = store.updateRate(id, this.updateValues as Partial<Tables['rates']['Row']>) as T | undefined
           } else if (this.tableName === 'projects') {
             updatedItem = store.updateProject(id, this.updateValues as Partial<Tables['projects']['Row']>) as T | undefined
           } else if (this.tableName === 'time_entries') {
@@ -245,8 +248,10 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
       if (this.operation === 'delete') {
         for (const item of filtered) {
           const id = (item as Record<string, unknown>).id as string
-          if (this.tableName === 'clients') {
-            store.deleteClient(id)
+          if (this.tableName === 'trails') {
+            store.deleteTrail(id)
+          } else if (this.tableName === 'rates') {
+            store.deleteRate(id)
           } else if (this.tableName === 'projects') {
             store.deleteProject(id)
           } else if (this.tableName === 'time_entries') {
@@ -258,29 +263,29 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
 
       // Handle SELECT with joins (simplified - just handle the patterns we use)
       if (this.selectColumns.includes('projects') && this.tableName === 'time_entries') {
-        // Join time_entries with projects and clients
+        // Join time_entries with projects and trails
         const entries = filtered as Tables['time_entries']['Row'][]
         const enriched = entries.map(entry => {
           const project = store.getProject(entry.project_id)
           if (!project) return null
-          const client = store.getClient(project.client_id)
+          const trail = store.getTrail(project.trail_id)
           return {
             ...entry,
             projects: {
               ...project,
-              clients: client || null,
+              trails: trail || null,
             },
           }
         }).filter(Boolean)
         filtered = enriched as unknown as T[]
-      } else if (this.selectColumns.includes('clients') && this.tableName === 'projects') {
-        // Join projects with clients
+      } else if (this.selectColumns.includes('trails') && this.tableName === 'projects') {
+        // Join projects with trails
         const projects = filtered as Tables['projects']['Row'][]
         const enriched = projects.map(project => {
-          const client = store.getClient(project.client_id)
+          const trail = store.getTrail(project.trail_id)
           return {
             ...project,
-            clients: client || null,
+            trails: trail || null,
           }
         })
         filtered = enriched as unknown as T[]

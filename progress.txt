@@ -89,6 +89,16 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - `getAllRunningTimersWithProjects` now returns `trail` (not `client`) with `is_billable` flag; callers use rates.ts to compute cost.
 ---
 
+## Iteration 6 - Task 6: Update `src/lib/supabaseDemo.ts` for new schema
+- What was implemented: Rewrote `mockData.ts` — replaced `Client` type and mock clients with `Trail`/`Rate` types and 6 mock trails matching seed data (B.B., Evermore Equine, Hapag-Lloyd, DObot, In DO Time, Personal), added 2 mock rates ($50/hr for client trails), updated projects to use `trail_id`, updated time entries to include `source: 'manual'` and `source_observation_id: null`, updated `MockDataStore` to use `trails`/`rates` instead of `clients`. Rewrote `supabaseDemo.ts` — replaced all `clients` references with `trails`, added `rates` table support in INSERT/SELECT/UPDATE/DELETE paths, updated JOIN logic from `time_entries→projects→clients` to `time_entries→projects→trails` and `projects→clients` to `projects→trails`.
+- Files changed: `src/lib/mockData.ts` (rewritten), `src/lib/supabaseDemo.ts` (rewritten), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - `rates` table has no `updated_at` column (immutable by design) — INSERT handler skips adding `updated_at` for the `rates` table.
+  - `eq('project_id', null)` works for IS NULL filtering in the mock since JS `null === null` is true.
+  - Pre-existing typecheck errors from `clients/page.tsx`, `projects/page.tsx`, `ActiveTimers.tsx` are expected — these are fixed in Tasks 9-14. Our new files were clean.
+  - 42/42 tests passed.
+---
+
 ## Roadmap (For Future Context, Not This Run)
 
 ### Ralph Run #2 — Capture Layer
