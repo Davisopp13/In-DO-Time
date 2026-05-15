@@ -270,7 +270,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Manual time entry: select trail → select project → set times → notes.
   - Test: `npx tsc --noEmit`, `npm run build`.
 
-- [ ] **Task 14: Update `src/app/projects/page.tsx`**
+- [x] **Task 14: Update `src/app/projects/page.tsx`**
   - List view of all projects across trails. Group by trail.
   - "Add project" form: select trail → name → description → optional initial project-level rate override (only if trail is billable).
   - Edit/archive actions preserved.
