@@ -185,7 +185,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - Test: SQL file parses (use `npx supabase db lint` if available, otherwise visually verify against schema spec).
   - Acceptance: file exists, contains all four CREATE TABLE statements, all listed indexes, RLS enabled.
 
-- [ ] **Task 2: Write seed migration SQL**
+- [x] **Task 2: Write seed migration SQL**
   - Create `supabase/migrations/004_v2_seed_trails.sql` with the seed trails table and seed rates rows from the spec.
   - Test: SQL file parses.
   - Acceptance: file contains 6 trail INSERTs and 2 rate INSERTs (one for each client trail).

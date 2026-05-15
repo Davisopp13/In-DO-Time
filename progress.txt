@@ -61,6 +61,13 @@ End state: a working v2-shape time tracker. NO journal, observations, or briefin
   - source_observation_id is UUID with NO FK — observations table comes in run #2
 ---
 
+## Iteration 2 - Task 2: Write seed migration SQL
+- What was implemented: Created `supabase/migrations/004_v2_seed_trails.sql` with 6 trail INSERTs (single multi-row INSERT statement) and 2 rate INSERTs via INSERT/SELECT targeting slugs 'bb' and 'evermore-equine'.
+- Files changed: `supabase/migrations/004_v2_seed_trails.sql` (new), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - Use INSERT/SELECT with WHERE slug IN (...) to reference just-inserted trails for the rates seed — avoids hardcoding UUIDs.
+  - Multi-row INSERT for trails keeps the file compact and readable.
+  - display_order 1-6 matches the PRD table order.
 ---
 
 ## Roadmap (For Future Context, Not This Run)
