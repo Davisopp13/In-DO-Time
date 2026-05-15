@@ -166,6 +166,18 @@ Add the observation and journaling foundation:
   - 42/42 tests passed.
 ---
 
+## Iteration 11 - Task 11: Create `src/app/trails/[id]/page.tsx` trail detail view
+- What was implemented: Created `src/app/trails/[id]/page.tsx` — trail detail page with four sections: trail header (name, kind badge, billable badge, edit button), Projects (list with archive/restore, add project modal), Rate History (billable trails only — table of rate rows, add rate modal), Recent Time Entries (fetched per-project and merged). Added "View" link to each trail card in `trails/page.tsx`. Rate add flow: finds open rate (effective_until IS NULL), closes it off with effective_until = (new_from - 1 day), then inserts new rate row.
+- Files changed: `src/app/trails/[id]/page.tsx` (new), `src/app/trails/page.tsx` (added Link import + View button), `PRD.md` (task marked complete), `progress.txt` (this update).
+- Learnings for future iterations:
+  - Fetch time entries per-project individually (`.eq('project_id', id).limit(10)`) then merge/sort in JS — avoids needing `.in()` which the mock client doesn't support.
+  - Filter rates by `project_id === null` in JS after fetching all trail rates — avoids `.is('project_id', null)` which the mock also doesn't support.
+  - Sort rates in JS (`.sort()` by effective_from descending) rather than relying on mock's ORDER BY, since the mock's `order()` method may not be wired into execute() for all cases.
+  - Rate immutability pattern: find open rate (effective_until IS NULL), update its effective_until, then insert new row. This is the prescribed pattern from the PRD and mock's updateRate() supports it.
+  - Pre-existing build errors from `projects/page.tsx` (Task 14) and `ActiveTimers.tsx` (Task 12) are unchanged.
+  - 42/42 tests passed.
+---
+
 ### Ralph Run #4+ — Polish, Mobile, Edge Cases
 - README rewrite reflecting full v2 product
 - Per-entry billable override (`is_billable` on time entries)

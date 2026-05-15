@@ -249,7 +249,7 @@ Demo mode (`supabaseDemo.ts`) must continue to work and serve mock data matching
   - On submit, if billable + rate given, also insert one rate row with `effective_from = today`.
   - Test: `npx tsc --noEmit`, `npm run build`. Visual: `npm run dev` and confirm seed trails render in grouped sections.
 
-- [ ] **Task 11: Create `src/app/trails/[id]/page.tsx` trail detail view**
+- [x] **Task 11: Create `src/app/trails/[id]/page.tsx` trail detail view**
   - Header: trail name, kind, edit button.
   - Sections: Projects (list, add new), Rate history (if billable — list of rate rows with effective_from/until, add new rate button), Recent time entries.
   - Adding a new rate inserts a new row AND sets the previous active rate's `effective_until` to (new rate's `effective_from` - 1 day).

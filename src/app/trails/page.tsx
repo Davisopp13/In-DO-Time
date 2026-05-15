@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getSupabase } from '@/lib/supabase';
 import type { Trail, TrailInsert, Rate } from '@/types/database';
 import EmptyState from '@/components/EmptyState';
@@ -319,6 +320,12 @@ export default function TrailsPage() {
                           />
                         </div>
                         <div className="mt-6 flex gap-2">
+                          <Link
+                            href={`/trails/${trail.id}`}
+                            className="rounded-full px-3 py-1.5 text-xs font-medium text-text-muted hover:text-text dark:text-white/70 dark:hover:text-white bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 border border-border dark:border-white/5 transition-colors"
+                          >
+                            View
+                          </Link>
                           <button
                             onClick={() => handleArchive(trail)}
                             disabled={archivingId === trail.id}
