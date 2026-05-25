@@ -9,6 +9,36 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      clients: {
+        Row: {
+          id: string
+          name: string
+          hourly_rate: number
+          color: string | null
+          status: 'active' | 'archived'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          hourly_rate?: number
+          color?: string | null
+          status?: 'active' | 'archived'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          hourly_rate?: number
+          color?: string | null
+          status?: 'active' | 'archived'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trails: {
         Row: {
           id: string
@@ -349,3 +379,7 @@ export type RateUpdate = Database['public']['Tables']['rates']['Update']
 export type TimeEntry = Database['public']['Tables']['time_entries']['Row']
 export type TimeEntryInsert = Database['public']['Tables']['time_entries']['Insert']
 export type TimeEntryUpdate = Database['public']['Tables']['time_entries']['Update']
+
+export type Client = Database['public']['Tables']['clients']['Row']
+export type ClientInsert = Database['public']['Tables']['clients']['Insert']
+export type ClientUpdate = Database['public']['Tables']['clients']['Update']

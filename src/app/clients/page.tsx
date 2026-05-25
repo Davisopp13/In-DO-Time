@@ -84,7 +84,7 @@ export default function ClientsPage() {
     setEditingClient(client);
     setFormName(client.name);
     setFormRate(client.hourly_rate.toString());
-    setFormColor(client.color);
+    setFormColor(client.color ?? CLIENT_COLORS[0]);
     setShowForm(true);
   }
 
@@ -237,7 +237,7 @@ export default function ClientsPage() {
               key={client.id}
               className={`glass-card p-6 shadow-card border-l-4 transition-all duration-300 hover:scale-[1.01] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${client.status === 'archived' ? 'opacity-60 grayscale' : ''
                 }`}
-              style={{ borderLeftColor: client.color }}
+              style={{ borderLeftColor: client.color ?? undefined }}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -253,7 +253,7 @@ export default function ClientsPage() {
                 </div>
                 <div
                   className="h-4 w-4 rounded-full"
-                  style={{ backgroundColor: client.color }}
+                  style={{ backgroundColor: client.color ?? undefined }}
                 />
               </div>
               <div className="mt-6 flex gap-2">
