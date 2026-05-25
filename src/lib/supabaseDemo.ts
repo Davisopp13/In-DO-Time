@@ -19,15 +19,6 @@ interface MockPostgrestError {
   code: string
 }
 
-// Mock response types matching Supabase
-interface MockResponse<T> {
-  data: T | null
-  error: MockPostgrestError | null
-  count?: number | null
-  status: number
-  statusText: string
-}
-
 // Query builder interface
 interface QueryBuilder<T> {
   select(columns?: string): QueryBuilder<T>
@@ -44,6 +35,25 @@ interface QueryBuilder<T> {
   limit(count: number): QueryBuilder<T>
   single(): Promise<{ data: T | null; error: MockPostgrestError | null }>
   then(onfulfilled?: (value: { data: T[] | null; error: MockPostgrestError | null; count?: number | null }) => unknown): Promise<unknown>
+}
+
+function compareValues(itemValue: unknown, value: unknown, operator: '>=' | '<=' | '>' | '<'): boolean {
+  if (itemValue === undefined || itemValue === null) return false
+  if (
+    (typeof itemValue !== 'string' && typeof itemValue !== 'number') ||
+    (typeof value !== 'string' && typeof value !== 'number')
+  ) {
+    return false
+  }
+
+  if (operator === '>=') return itemValue >= value
+  if (operator === '<=') return itemValue <= value
+  if (operator === '>') return itemValue > value
+  return itemValue < value
+}
+
+function sortableValue(value: unknown): string | number {
+  return typeof value === 'number' || typeof value === 'string' ? value : ''
 }
 
 class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
@@ -97,7 +107,7 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
   gte(column: string, value: unknown): QueryBuilder<T> {
     this.filters.push((item: T) => {
       const itemValue = (item as Record<string, unknown>)[column]
-      return itemValue !== undefined && itemValue !== null && itemValue >= (value as any)
+      return compareValues(itemValue, value, '>=')
     })
     return this
   }
@@ -105,7 +115,7 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
   lte(column: string, value: unknown): QueryBuilder<T> {
     this.filters.push((item: T) => {
       const itemValue = (item as Record<string, unknown>)[column]
-      return itemValue !== undefined && itemValue !== null && itemValue <= (value as any)
+      return compareValues(itemValue, value, '<=')
     })
     return this
   }
@@ -113,7 +123,7 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
   gt(column: string, value: unknown): QueryBuilder<T> {
     this.filters.push((item: T) => {
       const itemValue = (item as Record<string, unknown>)[column]
-      return itemValue !== undefined && itemValue !== null && itemValue > (value as any)
+      return compareValues(itemValue, value, '>')
     })
     return this
   }
@@ -121,7 +131,7 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
   lt(column: string, value: unknown): QueryBuilder<T> {
     this.filters.push((item: T) => {
       const itemValue = (item as Record<string, unknown>)[column]
-      return itemValue !== undefined && itemValue !== null && itemValue < (value as any)
+      return compareValues(itemValue, value, '<')
     })
     return this
   }
@@ -166,7 +176,7 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
         ...result,
         data: Array.isArray(result.data) ? result.data : (result.data ? [result.data] : null),
       }
-      return onfulfilled ? onfulfilled(normalizedResult as any) : normalizedResult
+      return onfulfilled ? onfulfilled(normalizedResult as { data: T[] | null; error: MockPostgrestError | null; count?: number | null }) : normalizedResult
     })
   }
 
@@ -199,6 +209,12 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             store.addProject(newItem as Tables['projects']['Row'])
           } else if (this.tableName === 'time_entries') {
             store.addTimeEntry(newItem as Tables['time_entries']['Row'])
+          } else if (this.tableName === 'observations') {
+            store.addObservation(newItem as Tables['observations']['Row'])
+          } else if (this.tableName === 'open_loops') {
+            store.addOpenLoop(newItem as Tables['open_loops']['Row'])
+          } else if (this.tableName === 'journal_entries') {
+            store.addJournalEntry(newItem as Tables['journal_entries']['Row'])
           }
 
           inserted.push(newItem)
@@ -217,6 +233,12 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
         data = store.getProjects() as T[]
       } else if (this.tableName === 'time_entries') {
         data = store.getTimeEntries() as T[]
+      } else if (this.tableName === 'observations') {
+        data = store.getObservations() as T[]
+      } else if (this.tableName === 'open_loops') {
+        data = store.getOpenLoops() as T[]
+      } else if (this.tableName === 'journal_entries') {
+        data = store.getJournalEntries() as T[]
       }
 
       // Apply filters
@@ -237,6 +259,12 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             updatedItem = store.updateProject(id, this.updateValues as Partial<Tables['projects']['Row']>) as T | undefined
           } else if (this.tableName === 'time_entries') {
             updatedItem = store.updateTimeEntry(id, this.updateValues as Partial<Tables['time_entries']['Row']>) as T | undefined
+          } else if (this.tableName === 'observations') {
+            updatedItem = store.updateObservation(id, this.updateValues as Partial<Tables['observations']['Row']>) as T | undefined
+          } else if (this.tableName === 'open_loops') {
+            updatedItem = store.updateOpenLoop(id, this.updateValues as Partial<Tables['open_loops']['Row']>) as T | undefined
+          } else if (this.tableName === 'journal_entries') {
+            updatedItem = store.updateJournalEntry(id, this.updateValues as Partial<Tables['journal_entries']['Row']>) as T | undefined
           }
 
           if (updatedItem) updated.push(updatedItem)
@@ -256,6 +284,12 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             store.deleteProject(id)
           } else if (this.tableName === 'time_entries') {
             store.deleteTimeEntry(id)
+          } else if (this.tableName === 'observations') {
+            store.deleteObservation(id)
+          } else if (this.tableName === 'open_loops') {
+            store.deleteOpenLoop(id)
+          } else if (this.tableName === 'journal_entries') {
+            store.deleteJournalEntry(id)
           }
         }
         return { data: null, error: null }
@@ -295,8 +329,8 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
       if (this.orderBy) {
         const { column, ascending } = this.orderBy
         filtered.sort((a, b) => {
-          const aVal = (a as Record<string, any>)[column]
-          const bVal = (b as Record<string, any>)[column]
+          const aVal = sortableValue((a as Record<string, unknown>)[column])
+          const bVal = sortableValue((b as Record<string, unknown>)[column])
           if (aVal < bVal) return ascending ? -1 : 1
           if (aVal > bVal) return ascending ? 1 : -1
           return 0

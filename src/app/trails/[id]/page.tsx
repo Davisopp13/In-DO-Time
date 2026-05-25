@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowDown, ArrowUp, Check, Flag, Plus, X } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
-import type { Trail, TrailUpdate, Project, ProjectInsert, Rate, TimeEntry } from '@/types/database';
+import { Z_INDEX } from '@/lib/constants';
+import { parseTaskInput } from '@/lib/parseTaskInput';
+import type { Json, Trail, TrailUpdate, Project, ProjectInsert, ProjectUpdate, Rate, TimeEntry, OpenLoop, OpenLoopInsert, OpenLoopUpdate } from '@/types/database';
 import { formatDuration } from '@/lib/timer';
 
 const KIND_LABELS: Record<Trail['kind'], string> = {
@@ -47,6 +50,30 @@ function formatEntryDateTime(iso: string): string {
   });
 }
 
+type ProjectPhase = {
+  id: string;
+  name: string;
+  completed: boolean;
+};
+
+function getProjectPhases(project: Project): ProjectPhase[] {
+  if (!Array.isArray(project.phases)) return [];
+  return project.phases.filter((phase): phase is ProjectPhase => {
+    return typeof phase === 'object' && phase !== null && 'id' in phase && 'name' in phase && 'completed' in phase;
+  });
+}
+
+function parsedTagsFor(input: string): Json {
+  const parsed = parseTaskInput(input);
+  return {
+    tags: parsed.tags,
+    project: parsed.project,
+    priority: parsed.priority,
+    assignee: parsed.assignee,
+    due_date: parsed.due_date ? parsed.due_date.toISOString() : null,
+  };
+}
+
 export default function TrailDetailPage() {
   const params = useParams();
   const trailId = params.id as string;
@@ -55,6 +82,7 @@ export default function TrailDetailPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [rates, setRates] = useState<Rate[]>([]);
   const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
+  const [openLoopsByProject, setOpenLoopsByProject] = useState<Record<string, OpenLoop[]>>({});
   const [projectMap, setProjectMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +101,14 @@ export default function TrailDetailPage() {
   const [projectDescription, setProjectDescription] = useState('');
   const [projectSaving, setProjectSaving] = useState(false);
   const [archivingProjectId, setArchivingProjectId] = useState<string | null>(null);
+  const [newLoopTitleByProject, setNewLoopTitleByProject] = useState<Record<string, string>>({});
+  const [loopSavingProjectId, setLoopSavingProjectId] = useState<string | null>(null);
+  const [loopBusyId, setLoopBusyId] = useState<string | null>(null);
+  const [batchProject, setBatchProject] = useState<Project | null>(null);
+  const [batchText, setBatchText] = useState('');
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [phaseSavingProjectId, setPhaseSavingProjectId] = useState<string | null>(null);
+  const [newPhaseByProject, setNewPhaseByProject] = useState<Record<string, string>>({});
 
   // Add rate modal
   const [showAddRate, setShowAddRate] = useState(false);
@@ -119,6 +155,18 @@ export default function TrailDetailPage() {
       const pMap: Record<string, string> = {};
       for (const p of loadedProjects) pMap[p.id] = p.name;
       setProjectMap(pMap);
+
+      const loopsByProject: Record<string, OpenLoop[]> = {};
+      for (const project of loadedProjects) {
+        if (cancelled) return;
+        const { data: loopData } = await supabase
+          .from('open_loops')
+          .select('*')
+          .eq('project_id', project.id)
+          .order('order', { ascending: true });
+        loopsByProject[project.id] = ((loopData as OpenLoop[]) || []).sort((a, b) => a.order - b.order);
+      }
+      setOpenLoopsByProject(loopsByProject);
 
       if (loadedTrail.is_billable) {
         const { data: ratesData } = await supabase
@@ -245,6 +293,173 @@ export default function TrailDetailPage() {
       refresh();
     } finally {
       setArchivingProjectId(null);
+    }
+  }
+
+  async function updateProjectPhases(project: Project, phases: ProjectPhase[]) {
+    setPhaseSavingProjectId(project.id);
+    try {
+      const { error: updateError } = await getSupabase()
+        .from('projects')
+        .update({ phases: phases as unknown as Json } satisfies ProjectUpdate)
+        .eq('id', project.id);
+      if (updateError) {
+        setError('Failed to update project phases');
+        return;
+      }
+      setProjects((current) => current.map((item) => item.id === project.id ? { ...item, phases: phases as unknown as Json } : item));
+    } finally {
+      setPhaseSavingProjectId(null);
+    }
+  }
+
+  async function handleAddPhase(project: Project) {
+    const name = (newPhaseByProject[project.id] || '').trim();
+    if (!name) return;
+    const phases = getProjectPhases(project);
+    await updateProjectPhases(project, [...phases, { id: crypto.randomUUID(), name, completed: false }]);
+    setNewPhaseByProject((current) => ({ ...current, [project.id]: '' }));
+  }
+
+  async function handleRenamePhase(project: Project, phase: ProjectPhase) {
+    const name = prompt('Rename phase', phase.name)?.trim();
+    if (!name) return;
+    const phases = getProjectPhases(project).map((item) => item.id === phase.id ? { ...item, name } : item);
+    await updateProjectPhases(project, phases);
+  }
+
+  async function handleTogglePhase(project: Project, phase: ProjectPhase) {
+    const phases = getProjectPhases(project).map((item) => item.id === phase.id ? { ...item, completed: !item.completed } : item);
+    await updateProjectPhases(project, phases);
+  }
+
+  async function handleMovePhase(project: Project, phaseId: string, direction: -1 | 1) {
+    const phases = getProjectPhases(project);
+    const index = phases.findIndex((phase) => phase.id === phaseId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= phases.length) return;
+    const reordered = [...phases];
+    const [phase] = reordered.splice(index, 1);
+    reordered.splice(nextIndex, 0, phase);
+    await updateProjectPhases(project, reordered);
+  }
+
+  async function handleDeletePhase(project: Project, phaseId: string) {
+    const phases = getProjectPhases(project).filter((phase) => phase.id !== phaseId);
+    await updateProjectPhases(project, phases);
+  }
+
+  async function createOpenLoop(projectId: string, rawTitle: string, order: number) {
+    const parsed = parseTaskInput(rawTitle);
+    const row: OpenLoopInsert = {
+      project_id: projectId,
+      title: parsed.title || rawTitle.trim(),
+      order,
+      parsed_tags: parsedTagsFor(rawTitle),
+    };
+    return getSupabase().from('open_loops').insert(row);
+  }
+
+  async function handleAddOpenLoop(project: Project) {
+    const rawTitle = (newLoopTitleByProject[project.id] || '').trim();
+    if (!rawTitle) return;
+    setLoopSavingProjectId(project.id);
+    try {
+      const nextOrder = (openLoopsByProject[project.id] || []).length;
+      const { error: insertError } = await createOpenLoop(project.id, rawTitle, nextOrder);
+      if (insertError) {
+        setError('Failed to create open loop');
+        return;
+      }
+      setNewLoopTitleByProject((current) => ({ ...current, [project.id]: '' }));
+      refresh();
+    } finally {
+      setLoopSavingProjectId(null);
+    }
+  }
+
+  async function handleEditOpenLoop(loop: OpenLoop) {
+    const title = prompt('Edit open loop', loop.title)?.trim();
+    if (!title) return;
+    setLoopBusyId(loop.id);
+    try {
+      const update: OpenLoopUpdate = { title, parsed_tags: parsedTagsFor(title) };
+      const { error: updateError } = await getSupabase().from('open_loops').update(update).eq('id', loop.id);
+      if (updateError) {
+        setError('Failed to update open loop');
+        return;
+      }
+      refresh();
+    } finally {
+      setLoopBusyId(null);
+    }
+  }
+
+  async function handleSetLoopStatus(loop: OpenLoop, status: OpenLoop['status']) {
+    setLoopBusyId(loop.id);
+    try {
+      const now = new Date().toISOString();
+      const update: OpenLoopUpdate = {
+        status,
+        completed_at: status === 'completed' ? now : null,
+        abandoned_at: status === 'abandoned' ? now : null,
+      };
+      const { error: updateError } = await getSupabase().from('open_loops').update(update).eq('id', loop.id);
+      if (updateError) {
+        setError('Failed to update open loop');
+        return;
+      }
+      refresh();
+    } finally {
+      setLoopBusyId(null);
+    }
+  }
+
+  async function handleDeleteOpenLoop(loop: OpenLoop) {
+    if (!confirm(`Delete "${loop.title}"?`)) return;
+    setLoopBusyId(loop.id);
+    try {
+      const { error: deleteError } = await getSupabase().from('open_loops').delete().eq('id', loop.id);
+      if (deleteError) {
+        setError('Failed to delete open loop');
+        return;
+      }
+      refresh();
+    } finally {
+      setLoopBusyId(null);
+    }
+  }
+
+  async function handleMoveOpenLoop(projectId: string, loopId: string, direction: -1 | 1) {
+    const loops = [...(openLoopsByProject[projectId] || [])];
+    const index = loops.findIndex((loop) => loop.id === loopId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= loops.length) return;
+    const [loop] = loops.splice(index, 1);
+    loops.splice(nextIndex, 0, loop);
+    setOpenLoopsByProject((current) => ({ ...current, [projectId]: loops.map((item, order) => ({ ...item, order })) }));
+    await Promise.all(loops.map((item, order) => getSupabase().from('open_loops').update({ order } satisfies OpenLoopUpdate).eq('id', item.id)));
+    refresh();
+  }
+
+  async function handleBatchPlan(e: React.FormEvent) {
+    e.preventDefault();
+    if (!batchProject) return;
+    const lines = batchText.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    setBatchSaving(true);
+    try {
+      const currentCount = (openLoopsByProject[batchProject.id] || []).length;
+      const results = await Promise.all(lines.map((line, index) => createOpenLoop(batchProject.id, line, currentCount + index)));
+      if (results.some((result: { error: unknown }) => result.error)) {
+        setError('Some open loops could not be created');
+        return;
+      }
+      setBatchProject(null);
+      setBatchText('');
+      refresh();
+    } finally {
+      setBatchSaving(false);
     }
   }
 
@@ -399,54 +614,186 @@ export default function TrailDetailPage() {
           </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className={`glass-card p-4 border-l-4 shadow-card transition-all duration-200 hover:scale-[1.01] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${
-                  project.status === 'archived' ? 'opacity-60 grayscale' : ''
-                }`}
-                style={{ borderLeftColor: trailColor }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-text dark:text-white truncate">
-                      {project.name}
-                    </h3>
-                    {project.description && (
-                      <p className="mt-1 text-xs text-text-muted truncate">{project.description}</p>
-                    )}
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <span
-                        className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold rounded ${
-                          project.status === 'active'
-                            ? 'bg-primary/10 text-primary'
-                            : project.status === 'completed'
-                            ? 'bg-blue-500/10 text-blue-500'
-                            : 'bg-surface-foreground/10 dark:bg-white/10 text-text-muted/70 dark:text-white/50'
-                        }`}
-                      >
-                        {project.status}
-                      </span>
+            {projects.map((project) => {
+              const phases = getProjectPhases(project);
+              const loops = openLoopsByProject[project.id] || [];
+              return (
+                <div
+                  key={project.id}
+                  className={`glass-card p-4 border-l-4 shadow-card transition-all duration-200 hover:scale-[1.01] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${
+                    project.status === 'archived' ? 'opacity-60 grayscale' : ''
+                  }`}
+                  style={{ borderLeftColor: trailColor }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-text dark:text-white truncate">
+                        {project.name}
+                      </h3>
+                      {project.description && (
+                        <p className="mt-1 text-xs text-text-muted truncate">{project.description}</p>
+                      )}
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold rounded ${
+                            project.status === 'active'
+                              ? 'bg-primary/10 text-primary'
+                              : project.status === 'completed'
+                              ? 'bg-blue-500/10 text-blue-500'
+                              : 'bg-surface-foreground/10 dark:bg-white/10 text-text-muted/70 dark:text-white/50'
+                          }`}
+                        >
+                          {project.status}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleArchiveProject(project)}
+                      disabled={archivingProjectId === project.id}
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors border border-border dark:border-white/5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        project.status === 'active'
+                          ? 'text-text-muted hover:text-text dark:text-white/60 bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 dark:hover:text-white'
+                          : 'text-primary bg-primary/10 hover:bg-primary/20'
+                      }`}
+                    >
+                      {archivingProjectId === project.id
+                        ? '...'
+                        : project.status === 'active'
+                        ? 'Archive'
+                        : 'Restore'}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-3 border-t border-border pt-4 dark:border-white/5">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Phases</h4>
+                        {phaseSavingProjectId === project.id && <span className="text-[10px] text-text-muted">Saving...</span>}
+                      </div>
+                      <div className="space-y-1.5">
+                        {phases.map((phase, index) => (
+                          <div key={phase.id} className="flex items-center gap-1 rounded-lg bg-surface-foreground/5 px-2 py-1.5 dark:bg-white/5">
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePhase(project, phase)}
+                              className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${
+                                phase.completed ? 'border-primary bg-primary text-white' : 'border-border text-text-muted dark:border-white/10'
+                              }`}
+                              aria-label={phase.completed ? 'Mark phase incomplete' : 'Mark phase complete'}
+                            >
+                              {phase.completed && <Check className="h-3 w-3" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRenamePhase(project, phase)}
+                              className={`min-w-0 flex-1 truncate text-left text-xs ${phase.completed ? 'text-text-muted line-through' : 'text-text dark:text-white'}`}
+                            >
+                              {phase.name}
+                            </button>
+                            <button type="button" onClick={() => handleMovePhase(project, phase.id, -1)} disabled={index === 0} className="rounded p-1 text-text-muted hover:text-text disabled:opacity-30 dark:hover:text-white" aria-label="Move phase up">
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleMovePhase(project, phase.id, 1)} disabled={index === phases.length - 1} className="rounded p-1 text-text-muted hover:text-text disabled:opacity-30 dark:hover:text-white" aria-label="Move phase down">
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleDeletePhase(project, phase.id)} className="rounded p-1 text-text-muted hover:text-red-500" aria-label="Delete phase">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        {phases.length === 0 && <p className="text-xs text-text-muted">No phases yet.</p>}
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          value={newPhaseByProject[project.id] || ''}
+                          onChange={(event) => setNewPhaseByProject((current) => ({ ...current, [project.id]: event.target.value }))}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleAddPhase(project);
+                            }
+                          }}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-surface/50 px-2 py-1.5 text-xs text-text outline-none focus:border-accent dark:border-white/10 dark:bg-black/20 dark:text-white"
+                          placeholder="Add phase"
+                        />
+                        <button type="button" onClick={() => handleAddPhase(project)} className="rounded-full bg-surface-foreground/10 p-2 text-text hover:bg-surface-foreground/20 dark:bg-white/10 dark:text-white" aria-label="Add phase">
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Open loops</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBatchProject(project);
+                            setBatchText('');
+                          }}
+                          className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent hover:bg-accent/20"
+                        >
+                          <Flag className="h-3 w-3" />
+                          Plan
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {loops.map((loop, index) => (
+                          <div key={loop.id} className={`rounded-lg border border-border bg-surface/40 p-2 text-xs dark:border-white/5 dark:bg-black/20 ${loop.status !== 'open' ? 'opacity-60' : ''}`}>
+                            <div className="flex items-start gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSetLoopStatus(loop, loop.status === 'completed' ? 'open' : 'completed')}
+                                disabled={loopBusyId === loop.id}
+                                className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                                  loop.status === 'completed' ? 'border-primary bg-primary text-white' : 'border-border text-text-muted dark:border-white/10'
+                                }`}
+                                aria-label="Toggle complete"
+                              >
+                                {loop.status === 'completed' && <Check className="h-3 w-3" />}
+                              </button>
+                              <button type="button" onClick={() => handleEditOpenLoop(loop)} className="min-w-0 flex-1 text-left leading-5 text-text dark:text-white">
+                                {loop.title}
+                              </button>
+                            </div>
+                            <div className="mt-2 flex items-center justify-end gap-1">
+                              <button type="button" onClick={() => handleMoveOpenLoop(project.id, loop.id, -1)} disabled={index === 0 || loopBusyId === loop.id} className="rounded p-1 text-text-muted hover:text-text disabled:opacity-30 dark:hover:text-white" aria-label="Move loop up">
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleMoveOpenLoop(project.id, loop.id, 1)} disabled={index === loops.length - 1 || loopBusyId === loop.id} className="rounded p-1 text-text-muted hover:text-text disabled:opacity-30 dark:hover:text-white" aria-label="Move loop down">
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleSetLoopStatus(loop, 'abandoned')} disabled={loopBusyId === loop.id} className="rounded px-2 py-1 text-[10px] text-text-muted hover:text-amber-500">Abandon</button>
+                              <button type="button" onClick={() => handleDeleteOpenLoop(loop)} disabled={loopBusyId === loop.id} className="rounded p-1 text-text-muted hover:text-red-500" aria-label="Delete loop">
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {loops.length === 0 && <p className="text-xs text-text-muted">No loops yet.</p>}
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          value={newLoopTitleByProject[project.id] || ''}
+                          onChange={(event) => setNewLoopTitleByProject((current) => ({ ...current, [project.id]: event.target.value }))}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleAddOpenLoop(project);
+                            }
+                          }}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-surface/50 px-2 py-1.5 text-xs text-text outline-none focus:border-accent dark:border-white/10 dark:bg-black/20 dark:text-white"
+                          placeholder="Add open loop"
+                        />
+                        <button type="button" onClick={() => handleAddOpenLoop(project)} disabled={loopSavingProjectId === project.id} className="rounded-full bg-primary p-2 text-white disabled:opacity-50" aria-label="Add open loop">
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleArchiveProject(project)}
-                    disabled={archivingProjectId === project.id}
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors border border-border dark:border-white/5 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      project.status === 'active'
-                        ? 'text-text-muted hover:text-text dark:text-white/60 bg-surface-foreground/5 dark:bg-white/5 hover:bg-surface-foreground/10 dark:hover:bg-white/10 dark:hover:text-white'
-                        : 'text-primary bg-primary/10 hover:bg-primary/20'
-                    }`}
-                  >
-                    {archivingProjectId === project.id
-                      ? '...'
-                      : project.status === 'active'
-                      ? 'Archive'
-                      : 'Restore'}
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -594,7 +941,7 @@ export default function TrailDetailPage() {
 
       {/* Edit trail modal */}
       {showEditTrail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: Z_INDEX.modal }}>
           <div className="w-full max-w-md glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
             <h2 className="mb-4 text-xl font-bold text-text dark:text-white">Edit trail</h2>
             <form onSubmit={handleEditTrail} className="space-y-4">
@@ -663,7 +1010,7 @@ export default function TrailDetailPage() {
 
       {/* Add project modal */}
       {showAddProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: Z_INDEX.modal }}>
           <div className="w-full max-w-md glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
             <h2 className="mb-4 text-xl font-bold text-text dark:text-white">Add project</h2>
             <form onSubmit={handleAddProject} className="space-y-4">
@@ -717,7 +1064,7 @@ export default function TrailDetailPage() {
 
       {/* Add rate modal */}
       {showAddRate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: Z_INDEX.modal }}>
           <div className="w-full max-w-md glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
             <h2 className="mb-1 text-xl font-bold text-text dark:text-white">New rate</h2>
             <p className="mb-4 text-sm text-text-muted">
@@ -768,6 +1115,46 @@ export default function TrailDetailPage() {
                   className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {rateSaving ? 'Saving...' : 'Add rate'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Batch planning modal */}
+      {batchProject && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: Z_INDEX.modal }}>
+          <div className="w-full max-w-lg glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
+            <h2 className="mb-1 text-xl font-bold text-text dark:text-white">Plan this project</h2>
+            <p className="mb-4 text-sm text-text-muted">
+              One loop per line. Inline tags, priorities, dates, and @project hints are parsed on save.
+            </p>
+            <form onSubmit={handleBatchPlan} className="space-y-4">
+              <textarea
+                value={batchText}
+                onChange={(event) => setBatchText(event.target.value)}
+                rows={8}
+                className="w-full resize-none rounded-lg border border-border bg-surface/50 px-3 py-2 text-sm text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent dark:border-white/10 dark:bg-black/20 dark:text-white"
+                placeholder={'Sketch discovery questions #scope\nDraft API contract !!\nReview phase checklist tomorrow'}
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBatchProject(null);
+                    setBatchText('');
+                  }}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:text-text dark:hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={batchSaving}
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {batchSaving ? 'Saving...' : 'Create loops'}
                 </button>
               </div>
             </form>

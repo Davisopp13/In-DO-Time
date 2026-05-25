@@ -6,10 +6,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { ThemeToggle } from './ThemeToggle';
+import { Z_INDEX } from '@/lib/constants';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/trails', label: 'Trails' },
+  { href: '/journal', label: 'Journal' },
+  { href: '/briefing', label: 'Briefing' },
   { href: '/time-log', label: 'Time Log' },
   { href: '/reports', label: 'Reports' },
 ];
@@ -20,7 +23,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-2 md:top-4 z-50 mx-auto max-w-7xl px-4 mb-4 md:mb-6 flex items-center justify-between">
+      <header className="sticky top-2 md:top-4 mx-auto max-w-7xl px-4 mb-4 md:mb-6 flex items-center justify-between" style={{ zIndex: Z_INDEX.dropdown_portal }}>
         {/* Logo - Independent Floating Element */}
         <Link href="/" className="relative flex items-center h-auto w-auto shrink-0 transition-transform hover:scale-105 duration-200">
           <div className="relative h-12 md:h-20 w-32 md:w-56 overflow-hidden flex items-center justify-center">
@@ -79,10 +82,10 @@ export default function Header() {
         </div>
 
         {/* Mobile Navigation Overlay */}
-        <div className={`fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] md:hidden transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)} />
+        <div className={`fixed inset-0 bg-black/20 backdrop-blur-[2px] md:hidden transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ zIndex: Z_INDEX.overlay }} onClick={() => setMobileMenuOpen(false)} />
 
         {/* Mobile Navigation Dropdown */}
-        <div className={`absolute top-full right-0 mt-2 w-full max-w-sm transform transition-all duration-300 origin-top-right md:hidden z-[60] ${mobileMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
+        <div className={`absolute top-full right-0 mt-2 w-full max-w-sm transform transition-all duration-300 origin-top-right md:hidden ${mobileMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`} style={{ zIndex: Z_INDEX.popover }}>
           <nav className="glass-panel mx-4 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl bg-surface/95 backdrop-blur-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;

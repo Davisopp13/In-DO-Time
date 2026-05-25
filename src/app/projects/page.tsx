@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getSupabase } from '@/lib/supabase';
+import { Z_INDEX } from '@/lib/constants';
 import type { Trail, Project, ProjectInsert, ProjectUpdate, RateInsert } from '@/types/database';
 import EmptyState from '@/components/EmptyState';
 
@@ -215,9 +217,9 @@ export default function ProjectsPage() {
       {trails.length === 0 && !loading && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-500">
           You need to create a trail first before adding projects.{' '}
-          <a href="/trails" className="underline font-medium hover:text-amber-400">
+          <Link href="/trails" className="underline font-medium hover:text-amber-400">
             Add a trail
-          </a>
+          </Link>
         </div>
       )}
 
@@ -339,7 +341,7 @@ export default function ProjectsPage() {
 
       {/* Add / Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: Z_INDEX.modal }}>
           <div className="w-full max-w-md glass-card bg-surface dark:bg-[#0F172A] p-6 shadow-2xl">
             <h2 className="mb-4 text-xl font-bold text-text dark:text-white">
               {editingProject ? 'Edit Project' : 'Add New Project'}

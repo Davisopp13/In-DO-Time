@@ -58,6 +58,7 @@ export interface Database {
           name: string
           description: string | null
           status: 'active' | 'completed' | 'archived'
+          phases: Json
           created_at: string
           updated_at: string
         }
@@ -67,6 +68,7 @@ export interface Database {
           name: string
           description?: string | null
           status?: 'active' | 'completed' | 'archived'
+          phases?: Json
           created_at?: string
           updated_at?: string
         }
@@ -76,6 +78,7 @@ export interface Database {
           name?: string
           description?: string | null
           status?: 'active' | 'completed' | 'archived'
+          phases?: Json
           created_at?: string
           updated_at?: string
         }
@@ -130,6 +133,125 @@ export interface Database {
             referencedColumns: ['id']
           }
         ]
+      }
+      observations: {
+        Row: {
+          id: string
+          created_at: string
+          source: string
+          content: string
+          related_trail_id: string | null
+          related_project_id: string | null
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          source: string
+          content: string
+          related_trail_id?: string | null
+          related_project_id?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          source?: string
+          content?: string
+          related_trail_id?: string | null
+          related_project_id?: string | null
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'observations_related_trail_id_fkey'
+            columns: ['related_trail_id']
+            referencedRelation: 'trails'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'observations_related_project_id_fkey'
+            columns: ['related_project_id']
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      open_loops: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          project_id: string
+          title: string
+          notes: string | null
+          status: 'open' | 'completed' | 'abandoned'
+          order: number
+          parsed_tags: Json
+          completed_at: string | null
+          abandoned_at: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          project_id: string
+          title: string
+          notes?: string | null
+          status?: 'open' | 'completed' | 'abandoned'
+          order?: number
+          parsed_tags?: Json
+          completed_at?: string | null
+          abandoned_at?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          project_id?: string
+          title?: string
+          notes?: string | null
+          status?: 'open' | 'completed' | 'abandoned'
+          order?: number
+          parsed_tags?: Json
+          completed_at?: string | null
+          abandoned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'open_loops_project_id_fkey'
+            columns: ['project_id']
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      journal_entries: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          entry_date: string
+          content: string
+          parsed_tags: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          entry_date: string
+          content: string
+          parsed_tags?: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          entry_date?: string
+          content?: string
+          parsed_tags?: Json
+        }
+        Relationships: []
       }
       time_entries: {
         Row: {
@@ -207,6 +329,18 @@ export type TrailUpdate = Database['public']['Tables']['trails']['Update']
 export type Project = Database['public']['Tables']['projects']['Row']
 export type ProjectInsert = Database['public']['Tables']['projects']['Insert']
 export type ProjectUpdate = Database['public']['Tables']['projects']['Update']
+
+export type Observation = Database['public']['Tables']['observations']['Row']
+export type ObservationInsert = Database['public']['Tables']['observations']['Insert']
+export type ObservationUpdate = Database['public']['Tables']['observations']['Update']
+
+export type OpenLoop = Database['public']['Tables']['open_loops']['Row']
+export type OpenLoopInsert = Database['public']['Tables']['open_loops']['Insert']
+export type OpenLoopUpdate = Database['public']['Tables']['open_loops']['Update']
+
+export type JournalEntry = Database['public']['Tables']['journal_entries']['Row']
+export type JournalEntryInsert = Database['public']['Tables']['journal_entries']['Insert']
+export type JournalEntryUpdate = Database['public']['Tables']['journal_entries']['Update']
 
 export type Rate = Database['public']['Tables']['rates']['Row']
 export type RateInsert = Database['public']['Tables']['rates']['Insert']

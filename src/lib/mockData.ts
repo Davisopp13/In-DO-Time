@@ -9,6 +9,9 @@ type Trail = Database['public']['Tables']['trails']['Row']
 type Rate = Database['public']['Tables']['rates']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
 type TimeEntry = Database['public']['Tables']['time_entries']['Row']
+type Observation = Database['public']['Tables']['observations']['Row']
+type OpenLoop = Database['public']['Tables']['open_loops']['Row']
+type JournalEntry = Database['public']['Tables']['journal_entries']['Row']
 
 // Generate consistent UUIDs for demo data
 const generateId = (seed: string): string => {
@@ -131,6 +134,7 @@ export const mockProjects: Project[] = [
     name: 'Website Redesign',
     description: null,
     status: 'active',
+    phases: [],
     created_at: new Date('2026-01-15T10:30:00Z').toISOString(),
     updated_at: new Date('2026-01-15T10:30:00Z').toISOString(),
   },
@@ -140,6 +144,7 @@ export const mockProjects: Project[] = [
     name: 'Mobile App Development',
     description: null,
     status: 'active',
+    phases: [],
     created_at: new Date('2026-01-16T13:00:00Z').toISOString(),
     updated_at: new Date('2026-01-16T13:00:00Z').toISOString(),
   },
@@ -149,6 +154,7 @@ export const mockProjects: Project[] = [
     name: 'Client Portal',
     description: null,
     status: 'active',
+    phases: [],
     created_at: new Date('2026-01-20T15:00:00Z').toISOString(),
     updated_at: new Date('2026-01-20T15:00:00Z').toISOString(),
   },
@@ -158,6 +164,7 @@ export const mockProjects: Project[] = [
     name: 'Logistics Dashboard',
     description: null,
     status: 'active',
+    phases: [],
     created_at: new Date('2026-02-01T10:00:00Z').toISOString(),
     updated_at: new Date('2026-02-01T10:00:00Z').toISOString(),
   },
@@ -167,6 +174,10 @@ export const mockProjects: Project[] = [
     name: 'Core Development',
     description: null,
     status: 'active',
+    phases: [
+      { id: generateId('phase-dobot-discovery'), name: 'Discovery', completed: true },
+      { id: generateId('phase-dobot-build'), name: 'Build', completed: false },
+    ],
     created_at: new Date('2026-02-05T12:00:00Z').toISOString(),
     updated_at: new Date('2026-02-05T12:00:00Z').toISOString(),
   },
@@ -176,6 +187,9 @@ export const mockProjects: Project[] = [
     name: 'Foundation Rebuild',
     description: null,
     status: 'active',
+    phases: [
+      { id: generateId('phase-idt-observation'), name: 'Observation layer', completed: false },
+    ],
     created_at: new Date('2026-02-10T09:00:00Z').toISOString(),
     updated_at: new Date('2026-02-10T09:00:00Z').toISOString(),
   },
@@ -278,18 +292,63 @@ const generateTimeEntries = (): TimeEntry[] => {
 
 export const mockTimeEntries: TimeEntry[] = generateTimeEntries()
 
+export const mockObservations: Observation[] = [
+  {
+    id: generateId('observation-idt-1'),
+    created_at: new Date().toISOString(),
+    source: 'demo-agent',
+    content: 'Noticed foundation work clustering around journal and morning briefing.',
+    related_trail_id: generateId('trail-in-do-time'),
+    related_project_id: generateId('project-idt-foundation'),
+    metadata: { confidence: 0.82 },
+  },
+]
+
+export const mockOpenLoops: OpenLoop[] = [
+  {
+    id: generateId('loop-idt-1'),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    project_id: generateId('project-idt-foundation'),
+    title: 'Verify observation ingest with a real agent payload',
+    notes: null,
+    status: 'open',
+    order: 0,
+    parsed_tags: { tags: ['api'], priority: 'medium' },
+    completed_at: null,
+    abandoned_at: null,
+  },
+]
+
+export const mockJournalEntries: JournalEntry[] = [
+  {
+    id: generateId('journal-today'),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    entry_date: new Date().toISOString().split('T')[0],
+    content: 'Tuned the observation layer #foundation. Need to make the morning briefing feel quiet and useful.',
+    parsed_tags: { tags: ['foundation'], priority: null, project: null, assignee: null, due_date: null },
+  },
+]
+
 // In-memory store for demo mode (allows CRUD operations to persist during session)
 export class MockDataStore {
   private trails: Map<string, Trail>
   private rates: Map<string, Rate>
   private projects: Map<string, Project>
   private timeEntries: Map<string, TimeEntry>
+  private observations: Map<string, Observation>
+  private openLoops: Map<string, OpenLoop>
+  private journalEntries: Map<string, JournalEntry>
 
   constructor() {
     this.trails = new Map(mockTrails.map(t => [t.id, { ...t }]))
     this.rates = new Map(mockRates.map(r => [r.id, { ...r }]))
     this.projects = new Map(mockProjects.map(p => [p.id, { ...p }]))
     this.timeEntries = new Map(mockTimeEntries.map(e => [e.id, { ...e }]))
+    this.observations = new Map(mockObservations.map(o => [o.id, { ...o }]))
+    this.openLoops = new Map(mockOpenLoops.map(l => [l.id, { ...l }]))
+    this.journalEntries = new Map(mockJournalEntries.map(j => [j.id, { ...j }]))
   }
 
   // Trails
@@ -394,6 +453,72 @@ export class MockDataStore {
 
   deleteTimeEntry(id: string): boolean {
     return this.timeEntries.delete(id)
+  }
+
+  // Observations
+  getObservations(): Observation[] {
+    return Array.from(this.observations.values())
+  }
+
+  addObservation(observation: Observation): Observation {
+    this.observations.set(observation.id, observation)
+    return observation
+  }
+
+  updateObservation(id: string, updates: Partial<Observation>): Observation | undefined {
+    const observation = this.observations.get(id)
+    if (!observation) return undefined
+    const updated = { ...observation, ...updates }
+    this.observations.set(id, updated)
+    return updated
+  }
+
+  deleteObservation(id: string): boolean {
+    return this.observations.delete(id)
+  }
+
+  // Open Loops
+  getOpenLoops(): OpenLoop[] {
+    return Array.from(this.openLoops.values())
+  }
+
+  addOpenLoop(loop: OpenLoop): OpenLoop {
+    this.openLoops.set(loop.id, loop)
+    return loop
+  }
+
+  updateOpenLoop(id: string, updates: Partial<OpenLoop>): OpenLoop | undefined {
+    const loop = this.openLoops.get(id)
+    if (!loop) return undefined
+    const updated = { ...loop, ...updates, updated_at: new Date().toISOString() }
+    this.openLoops.set(id, updated)
+    return updated
+  }
+
+  deleteOpenLoop(id: string): boolean {
+    return this.openLoops.delete(id)
+  }
+
+  // Journal Entries
+  getJournalEntries(): JournalEntry[] {
+    return Array.from(this.journalEntries.values())
+  }
+
+  addJournalEntry(entry: JournalEntry): JournalEntry {
+    this.journalEntries.set(entry.id, entry)
+    return entry
+  }
+
+  updateJournalEntry(id: string, updates: Partial<JournalEntry>): JournalEntry | undefined {
+    const entry = this.journalEntries.get(id)
+    if (!entry) return undefined
+    const updated = { ...entry, ...updates, updated_at: new Date().toISOString() }
+    this.journalEntries.set(id, updated)
+    return updated
+  }
+
+  deleteJournalEntry(id: string): boolean {
+    return this.journalEntries.delete(id)
   }
 
   // Helper: Generate new ID
