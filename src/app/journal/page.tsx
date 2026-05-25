@@ -4,12 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
 import { parseTaskInput } from '@/lib/parseTaskInput';
+import { todayLocal, formatLocalDate } from '@/lib/date';
 import type { JournalEntry, JournalEntryInsert, JournalEntryUpdate } from '@/types/database';
 import EmptyState from '@/components/EmptyState';
-
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
-}
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
@@ -34,16 +31,12 @@ function parsedTagsFor(content: string): ParsedTags {
     project: parsed.project,
     priority: parsed.priority,
     assignee: parsed.assignee,
-    due_date: parsed.due_date ? parsed.due_date.toISOString() : null,
+    due_date: parsed.due_date,
   };
 }
 
 function formatSavedTime(date: Date): string {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-function formatDueDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
 export default function JournalPage() {
@@ -56,7 +49,7 @@ export default function JournalPage() {
   const [savedContent, setSavedContent] = useState<string | null>(null);
   const [savedTags, setSavedTags] = useState<ParsedTags | null>(null);
 
-  const today = todayISO();
+  const today = todayLocal();
   const todayEntry = entries.find((entry) => entry.entry_date === today);
   const history = entries.filter((entry) => entry.entry_date !== today);
 
@@ -174,7 +167,7 @@ export default function JournalPage() {
     if (savedTags.project) chips.push(`@${savedTags.project}`);
     savedTags.tags.forEach((tag) => chips.push(`#${tag}`));
     if (savedTags.priority) chips.push(savedTags.priority);
-    if (savedTags.due_date) chips.push(`Due ${formatDueDate(savedTags.due_date)}`);
+    if (savedTags.due_date) chips.push(`Due ${formatLocalDate(savedTags.due_date)}`);
     if (savedTags.assignee) chips.push(`+${savedTags.assignee}`);
   }
 

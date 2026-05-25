@@ -1,6 +1,8 @@
+import { localDateOffset, toLocalDateString } from './date';
+
 export interface ParsedTask {
   title: string;
-  due_date: Date | null;
+  due_date: string | null;
   priority: "low" | "medium" | "high" | null;
   project: string | null;
   tags: string[];
@@ -47,43 +49,37 @@ export function parseTaskInput(
     return "";
   });
 
-  // 3. Dates
-  let due_date: Date | null = null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 3. Dates — all output as YYYY-MM-DD local-date strings
+  let due_date: string | null = null;
+  // Kept for day-of-week arithmetic and MM/DD year/past-date logic
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
 
   // "today"
   text = text.replace(/\btoday\b/i, () => {
-    if (!due_date) due_date = new Date(today);
+    if (!due_date) due_date = localDateOffset(0);
     return "";
   });
 
   // "tomorrow"
   text = text.replace(/\btomorrow\b/i, () => {
-    if (!due_date) {
-      due_date = new Date(today);
-      due_date.setDate(due_date.getDate() + 1);
-    }
+    if (!due_date) due_date = localDateOffset(1);
     return "";
   });
 
   // "next week" → next Monday
   text = text.replace(/\bnext\s+week\b/i, () => {
     if (!due_date) {
-      due_date = new Date(today);
-      const dayOfWeek = due_date.getDay(); // 0=Sun
+      const dayOfWeek = todayDate.getDay(); // 0=Sun, local
       const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-      due_date.setDate(due_date.getDate() + daysUntilMonday);
+      due_date = localDateOffset(daysUntilMonday);
     }
     return "";
   });
 
   // "in N days"
   text = text.replace(/\bin\s+(\d+)\s+days?\b/i, (_, n) => {
-    if (!due_date) {
-      due_date = new Date(today);
-      due_date.setDate(due_date.getDate() + parseInt(n, 10));
-    }
+    if (!due_date) due_date = localDateOffset(parseInt(n, 10));
     return "";
   });
 
@@ -93,11 +89,12 @@ export function parseTaskInput(
       const month = parseInt(m, 10);
       const day = parseInt(d, 10);
       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-        due_date = new Date(today.getFullYear(), month - 1, day);
+        const candidate = new Date(todayDate.getFullYear(), month - 1, day);
         // If the date is in the past, assume next year
-        if (due_date < today) {
-          due_date.setFullYear(due_date.getFullYear() + 1);
+        if (candidate < todayDate) {
+          candidate.setFullYear(candidate.getFullYear() + 1);
         }
+        due_date = toLocalDateString(candidate);
       }
     }
     return "";
@@ -118,11 +115,10 @@ export function parseTaskInput(
   text = text.replace(weekdayPattern, (match) => {
     if (!due_date) {
       const target = weekdays[match.toLowerCase()];
-      const current = today.getDay();
+      const current = todayDate.getDay();
       let diff = target - current;
       if (diff <= 0) diff += 7; // Always the NEXT occurrence
-      due_date = new Date(today);
-      due_date.setDate(due_date.getDate() + diff);
+      due_date = localDateOffset(diff);
     }
     return "";
   });

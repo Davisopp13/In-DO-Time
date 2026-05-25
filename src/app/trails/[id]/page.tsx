@@ -70,7 +70,7 @@ function parsedTagsFor(input: string): Json {
     project: parsed.project,
     priority: parsed.priority,
     assignee: parsed.assignee,
-    due_date: parsed.due_date ? parsed.due_date.toISOString() : null,
+    due_date: parsed.due_date,
   };
 }
 
