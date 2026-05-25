@@ -26,13 +26,13 @@ export default function Header() {
       <header className="sticky top-2 md:top-4 mx-auto max-w-7xl px-4 mb-4 md:mb-6 flex items-center justify-between" style={{ zIndex: Z_INDEX.dropdown_portal }}>
         {/* Logo - Independent Floating Element */}
         <Link href="/" className="relative flex items-center h-auto w-auto shrink-0 transition-transform hover:scale-105 duration-200">
-          <div className="relative h-12 md:h-20 w-32 md:w-56 overflow-hidden flex items-center justify-center">
+          <div className="relative h-12 md:h-20 flex items-center justify-center">
             <Image
               src="/In_DO_Time_Logo.png"
               alt="In DO Time Logo"
-              width={400}
-              height={264}
-              className="w-full h-auto object-contain scale-[2.5] brightness-110 drop-shadow-lg translate-y-[2px]"
+              width={1106}
+              height={348}
+              className="h-full w-auto object-contain brightness-110 drop-shadow-lg"
               priority
             />
           </div>
