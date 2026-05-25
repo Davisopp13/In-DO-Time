@@ -40,7 +40,7 @@ export default function DemoBanner() {
             {/* Message */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text dark:text-white">
-                <span className="hidden sm:inline">You're viewing a </span>
+                <span className="hidden sm:inline">You&apos;re viewing a </span>
                 <span className="font-bold text-accent">live demo</span>
                 <span className="hidden sm:inline"> with sample data. All changes are temporary and reset on page refresh.</span>
                 <span className="sm:hidden"> - Changes are temporary</span>

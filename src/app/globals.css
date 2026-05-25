@@ -123,6 +123,70 @@
 }
 
 @layer utilities {
+  @keyframes skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes soft-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes loading-orbit {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .content-enter {
+    animation: soft-enter 220ms ease-out both;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--text) 10%, transparent);
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--surface) 55%, transparent),
+      transparent
+    );
+    animation: skeleton-shimmer 1.15s ease-in-out infinite;
+  }
+
+  .skeleton-card {
+    animation: soft-enter 180ms ease-out both;
+  }
+
+  .loading-orbit {
+    animation: loading-orbit 700ms linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .content-enter,
+    .skeleton-card,
+    .loading-orbit,
+    .skeleton::after {
+      animation: none;
+    }
+  }
 
   /* Glassmorphism Utilities */
   .glass {

@@ -1,66 +1,37 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Compass } from 'lucide-react';
-import { getSupabase } from '@/lib/supabase';
-import type { JournalEntry, Observation, OpenLoop, Project, Trail } from '@/types/database';
-
-type ProjectWithTrail = Project & { trail?: Pick<Trail, 'name' | 'color'> };
-type LoopWithProject = OpenLoop & { project?: ProjectWithTrail };
-
-function startOfDay(offsetDays: number): Date {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + offsetDays);
-  return date;
-}
+import { gatherBriefingInputs } from '@/lib/briefing/gather';
+import { synthesizeBriefing } from '@/lib/briefing/synthesize';
+import type { BriefingData } from '@/lib/briefing/types';
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 export default function BriefingPage() {
-  const [observations, setObservations] = useState<Observation[]>([]);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
-  const [openLoops, setOpenLoops] = useState<LoopWithProject[]>([]);
+  const [briefing, setBriefing] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const supabase = getSupabase();
 
     async function load() {
       setLoading(true);
-      const since = startOfDay(-1).toISOString();
-      const [obsResult, journalResult, loopsResult, projectsResult, trailsResult] = await Promise.all([
-        supabase.from('observations').select('*').gte('created_at', since).order('created_at', { ascending: false }).limit(30),
-        supabase.from('journal_entries').select('*').order('entry_date', { ascending: false }).limit(3),
-        supabase.from('open_loops').select('*').eq('status', 'open').order('order', { ascending: true }).limit(30),
-        supabase.from('projects').select('*'),
-        supabase.from('trails').select('id, name, color'),
-      ]);
-
-      if (cancelled) return;
-
-      if (obsResult.error || journalResult.error || loopsResult.error) {
-        setError('Failed to load briefing inputs');
-        setLoading(false);
-        return;
+      try {
+        const inputs = await gatherBriefingInputs();
+        if (cancelled) return;
+        setBriefing(synthesizeBriefing(inputs));
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to load briefing');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      const trails = new Map(((trailsResult.data as Pick<Trail, 'id' | 'name' | 'color'>[]) || []).map((trail) => [trail.id, trail]));
-      const projects = new Map(((projectsResult.data as Project[]) || []).map((project) => [
-        project.id,
-        { ...project, trail: trails.get(project.trail_id) },
-      ]));
-
-      setObservations((obsResult.data as Observation[]) || []);
-      setJournalEntries((journalResult.data as JournalEntry[]) || []);
-      setOpenLoops(((loopsResult.data as OpenLoop[]) || []).map((loop) => ({ ...loop, project: projects.get(loop.project_id) })));
-      setError(null);
-      setLoading(false);
     }
 
     load();
@@ -68,17 +39,6 @@ export default function BriefingPage() {
       cancelled = true;
     };
   }, []);
-
-  const topProjects = useMemo(() => {
-    const counts = new Map<string, { name: string; count: number; color?: string | null }>();
-    for (const loop of openLoops) {
-      const key = loop.project_id;
-      const current = counts.get(key) ?? { name: loop.project?.name ?? 'Unknown project', count: 0, color: loop.project?.trail?.color };
-      current.count += 1;
-      counts.set(key, current);
-    }
-    return Array.from(counts.values()).sort((a, b) => b.count - a.count).slice(0, 4);
-  }, [openLoops]);
 
   return (
     <div className="space-y-6">
@@ -102,21 +62,21 @@ export default function BriefingPage() {
         <div className="grid gap-4 lg:grid-cols-3">
           {[1, 2, 3].map((item) => <div key={item} className="glass-card h-40 animate-pulse" />)}
         </div>
-      ) : (
+      ) : briefing && (
         <>
           <section className="glass-card p-5 shadow-card">
             <h2 className="text-lg font-bold text-text dark:text-white">Orientation</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-border bg-surface/40 p-4 dark:border-white/5 dark:bg-black/20">
-                <div className="text-2xl font-bold text-text dark:text-white">{observations.length}</div>
+                <div className="text-2xl font-bold text-text dark:text-white">{briefing.observationCount}</div>
                 <div className="text-xs uppercase tracking-wider text-text-muted">recent observations</div>
               </div>
               <div className="rounded-lg border border-border bg-surface/40 p-4 dark:border-white/5 dark:bg-black/20">
-                <div className="text-2xl font-bold text-text dark:text-white">{openLoops.length}</div>
+                <div className="text-2xl font-bold text-text dark:text-white">{briefing.openLoopCount}</div>
                 <div className="text-xs uppercase tracking-wider text-text-muted">open loops</div>
               </div>
               <div className="rounded-lg border border-border bg-surface/40 p-4 dark:border-white/5 dark:bg-black/20">
-                <div className="text-2xl font-bold text-text dark:text-white">{journalEntries.length}</div>
+                <div className="text-2xl font-bold text-text dark:text-white">{briefing.journalEntryCount}</div>
                 <div className="text-xs uppercase tracking-wider text-text-muted">journal entries</div>
               </div>
             </div>
@@ -126,9 +86,9 @@ export default function BriefingPage() {
             <section className="glass-card p-5 shadow-card">
               <h2 className="text-lg font-bold text-text dark:text-white">Most Loaded Projects</h2>
               <div className="mt-4 space-y-3">
-                {topProjects.length === 0 ? (
+                {briefing.topProjects.length === 0 ? (
                   <p className="text-sm text-text-muted">No open project loops right now.</p>
-                ) : topProjects.map((project) => (
+                ) : briefing.topProjects.map((project) => (
                   <div key={project.name} className="flex items-center justify-between rounded-lg bg-surface-foreground/5 p-3 dark:bg-white/5">
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: project.color ?? '#3A7D44' }} />
@@ -142,10 +102,10 @@ export default function BriefingPage() {
 
             <section className="glass-card p-5 shadow-card">
               <h2 className="text-lg font-bold text-text dark:text-white">Latest Reflection</h2>
-              {journalEntries[0] ? (
+              {briefing.latestReflection ? (
                 <div className="mt-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-text-muted">{journalEntries[0].entry_date}</div>
-                  <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-text dark:text-white">{journalEntries[0].content}</p>
+                  <div className="text-xs font-bold uppercase tracking-wider text-text-muted">{briefing.latestReflection.entry_date}</div>
+                  <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-text dark:text-white">{briefing.latestReflection.content}</p>
                   <Link href="/journal" className="mt-3 inline-block text-xs font-medium text-primary hover:text-primary/80">
                     Open journal
                   </Link>
@@ -160,26 +120,26 @@ export default function BriefingPage() {
             <div className="glass-card p-5 shadow-card">
               <h2 className="text-lg font-bold text-text dark:text-white">Recent Observations</h2>
               <div className="mt-4 space-y-3">
-                {observations.slice(0, 6).map((observation) => (
-                  <div key={observation.id} className="border-b border-border pb-3 last:border-0 last:pb-0 dark:border-white/5">
-                    <div className="text-xs text-text-muted">{formatTime(observation.created_at)} · {observation.source}</div>
-                    <p className="mt-1 text-sm leading-6 text-text dark:text-white">{observation.content}</p>
+                {briefing.recentObservations.map((obs) => (
+                  <div key={obs.id} className="border-b border-border pb-3 last:border-0 last:pb-0 dark:border-white/5">
+                    <div className="text-xs text-text-muted">{formatTime(obs.created_at)} · {obs.source}</div>
+                    <p className="mt-1 text-sm leading-6 text-text dark:text-white">{obs.content}</p>
                   </div>
                 ))}
-                {observations.length === 0 && <p className="text-sm text-text-muted">No observations since yesterday morning.</p>}
+                {briefing.recentObservations.length === 0 && <p className="text-sm text-text-muted">No observations since yesterday morning.</p>}
               </div>
             </div>
 
             <div className="glass-card p-5 shadow-card">
               <h2 className="text-lg font-bold text-text dark:text-white">Open Loops</h2>
               <div className="mt-4 space-y-3">
-                {openLoops.slice(0, 8).map((loop) => (
+                {briefing.openLoopItems.map((loop) => (
                   <div key={loop.id} className="rounded-lg bg-surface-foreground/5 p-3 dark:bg-white/5">
                     <div className="text-sm font-medium text-text dark:text-white">{loop.title}</div>
-                    <div className="mt-1 text-xs text-text-muted">{loop.project?.name ?? 'Unknown project'}</div>
+                    <div className="mt-1 text-xs text-text-muted">{loop.projectName}</div>
                   </div>
                 ))}
-                {openLoops.length === 0 && <p className="text-sm text-text-muted">No open loops. Nice clean runway.</p>}
+                {briefing.openLoopItems.length === 0 && <p className="text-sm text-text-muted">No open loops. Nice clean runway.</p>}
               </div>
             </div>
           </section>

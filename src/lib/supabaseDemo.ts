@@ -27,6 +27,8 @@ interface QueryBuilder<T> {
   delete(): QueryBuilder<T>
   eq(column: string, value: unknown): QueryBuilder<T>
   neq(column: string, value: unknown): QueryBuilder<T>
+  in(column: string, values: unknown[]): QueryBuilder<T>
+  not(column: string, operator: string, value: unknown): QueryBuilder<T>
   gte(column: string, value: unknown): QueryBuilder<T>
   lte(column: string, value: unknown): QueryBuilder<T>
   gt(column: string, value: unknown): QueryBuilder<T>
@@ -101,6 +103,33 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
 
   neq(column: string, value: unknown): QueryBuilder<T> {
     this.filters.push((item: T) => (item as Record<string, unknown>)[column] !== value)
+    return this
+  }
+
+  in(column: string, values: unknown[]): QueryBuilder<T> {
+    const valueSet = new Set(values)
+    this.filters.push((item: T) => valueSet.has((item as Record<string, unknown>)[column]))
+    return this
+  }
+
+  not(column: string, operator: string, value: unknown): QueryBuilder<T> {
+    this.filters.push((item: T) => {
+      const itemValue = (item as Record<string, unknown>)[column]
+
+      if (operator === 'is') {
+        return itemValue !== value
+      }
+
+      if (operator === 'eq') {
+        return itemValue !== value
+      }
+
+      if (operator === 'neq') {
+        return itemValue === value
+      }
+
+      return true
+    })
     return this
   }
 

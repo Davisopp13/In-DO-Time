@@ -19,7 +19,15 @@ function formatDate(iso: string): string {
   });
 }
 
-function parsedTagsFor(content: string) {
+type ParsedTags = {
+  tags: string[];
+  project: string | null;
+  priority: 'low' | 'medium' | 'high' | null;
+  assignee: string | null;
+  due_date: string | null;
+};
+
+function parsedTagsFor(content: string): ParsedTags {
   const parsed = parseTaskInput(content);
   return {
     tags: parsed.tags,
@@ -30,12 +38,23 @@ function parsedTagsFor(content: string) {
   };
 }
 
+function formatSavedTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatDueDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
 export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [savedContent, setSavedContent] = useState<string | null>(null);
+  const [savedTags, setSavedTags] = useState<ParsedTags | null>(null);
 
   const today = todayISO();
   const todayEntry = entries.find((entry) => entry.entry_date === today);
@@ -70,30 +89,93 @@ export default function JournalPage() {
     setSaving(true);
     setError(null);
 
+    const parsed_tags = parsedTagsFor(content);
+    const previousEntries = entries;
+
+    // Optimistic update — reflect the save immediately in local state
+    if (todayEntry) {
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.entry_date === today ? { ...entry, content, parsed_tags } : entry
+        )
+      );
+    } else {
+      const tempEntry: JournalEntry = {
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        entry_date: today,
+        content,
+        parsed_tags,
+      };
+      setEntries((prev) => [tempEntry, ...prev]);
+    }
+    setLastSavedAt(new Date());
+    setSavedContent(content);
+    setSavedTags(parsed_tags);
+
     try {
       const supabase = getSupabase();
-      const parsed_tags = parsedTagsFor(content);
 
       if (todayEntry) {
         const update: JournalEntryUpdate = { content, parsed_tags };
-        const { error: updateError } = await supabase.from('journal_entries').update(update).eq('id', todayEntry.id);
+        const { data, error: updateError } = await supabase
+          .from('journal_entries')
+          .update(update)
+          .eq('id', todayEntry.id)
+          .select()
+          .single();
         if (updateError) {
           setError('Failed to update journal entry');
+          setEntries(previousEntries);
+          setLastSavedAt(null);
+          setSavedContent(null);
+          setSavedTags(null);
           return;
         }
+        setEntries((prev) =>
+          prev.map((entry) => (entry.entry_date === today ? (data as JournalEntry) : entry))
+        );
       } else {
         const insert: JournalEntryInsert = { entry_date: today, content, parsed_tags };
-        const { error: insertError } = await supabase.from('journal_entries').insert(insert);
+        const { data, error: insertError } = await supabase
+          .from('journal_entries')
+          .insert(insert)
+          .select()
+          .single();
         if (insertError) {
           setError('Failed to save journal entry');
+          setEntries(previousEntries);
+          setLastSavedAt(null);
+          setSavedContent(null);
+          setSavedTags(null);
           return;
         }
+        setEntries((prev) =>
+          prev.map((entry) => (entry.entry_date === today ? (data as JournalEntry) : entry))
+        );
       }
-
-      await load();
     } finally {
       setSaving(false);
     }
+  }
+
+  const hasUnsavedChanges = savedContent !== null && content !== savedContent;
+  const saveIndicator = saving
+    ? 'Saving...'
+    : hasUnsavedChanges
+      ? 'Unsaved changes'
+      : lastSavedAt && !error
+        ? `Saved · ${formatSavedTime(lastSavedAt)}`
+        : null;
+
+  const chips: string[] = [];
+  if (savedTags) {
+    if (savedTags.project) chips.push(`@${savedTags.project}`);
+    savedTags.tags.forEach((tag) => chips.push(`#${tag}`));
+    if (savedTags.priority) chips.push(savedTags.priority);
+    if (savedTags.due_date) chips.push(`Due ${formatDueDate(savedTags.due_date)}`);
+    if (savedTags.assignee) chips.push(`+${savedTags.assignee}`);
   }
 
   return (
@@ -112,14 +194,19 @@ export default function JournalPage() {
       <form onSubmit={handleSave} className="glass-card p-5 shadow-card">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">Today · {formatDate(today)}</h2>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white shadow-sm shadow-primary/20 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          <div className="flex items-center gap-3">
+            {saveIndicator && (
+              <span className="text-xs text-text-muted">{saveIndicator}</span>
+            )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white shadow-sm shadow-primary/20 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
         </div>
         <textarea
           value={content}
@@ -128,6 +215,18 @@ export default function JournalPage() {
           className="w-full resize-none rounded-lg border border-border bg-surface/50 px-4 py-3 text-sm leading-6 text-text outline-none transition-colors placeholder:text-text-muted/50 focus:border-accent focus:ring-1 focus:ring-accent dark:border-white/10 dark:bg-black/20 dark:text-white dark:placeholder:text-white/25"
           placeholder="What happened today? What is still open? Use #tags, @project, !, or due words when they help."
         />
+        {chips.length > 0 && !error && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-border/50 bg-surface/60 px-2.5 py-0.5 text-xs text-text-muted dark:border-white/10 dark:bg-white/5"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
       </form>
 
       <section className="space-y-3">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import type { Rate } from '@/types/database'
 import {
@@ -9,7 +10,6 @@ import {
   pauseTimer,
   resumeTimer,
   getAllRunningTimersWithProjects,
-  getPausedTimerForProject,
   calculateElapsedSeconds,
   formatDuration,
   calculateRunningCost,
@@ -177,8 +177,10 @@ export default function Dashboard() {
 
       if (projectError) throw projectError
 
+      let activeProjectData = projectData || []
+
       // Auto-seed default trails if no projects exist (first-time setup)
-      if (!projectData || projectData.length === 0) {
+      if (activeProjectData.length === 0) {
         const { seeded } = await seedDefaultTrails()
         if (seeded) {
           const { data: seededData, error: seededError } = await supabase
@@ -187,22 +189,49 @@ export default function Dashboard() {
             .eq('status', 'active')
             .order('name')
           if (!seededError && seededData) {
-            setProjects(mapProjects(seededData))
-            setLoading(false)
-            return
+            activeProjectData = seededData
           }
         }
       }
 
-      const mappedProjects = mapProjects(projectData || [])
+      const mappedProjects = mapProjects(activeProjectData)
+      const projectIds = mappedProjects.map((p) => p.id)
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const pausedSince = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+      const [ratesResult, running, pausedResult, entriesResult] = await Promise.all([
+        supabase.from('rates').select('*'),
+        getAllRunningTimersWithProjects(),
+        projectIds.length > 0
+          ? supabase
+              .from('time_entries')
+              .select('project_id, end_time')
+              .in('project_id', projectIds)
+              .eq('is_running', false)
+              .not('end_time', 'is', null)
+              .gte('end_time', pausedSince)
+              .order('end_time', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('time_entries')
+          .select(`
+            id, start_time, end_time, duration_seconds, notes, project_id,
+            projects!inner(
+              id,
+              name,
+              trail_id,
+              trails!inner(id, name, color, is_billable)
+            )
+          `)
+          .eq('is_running', false)
+          .gte('start_time', todayStart.toISOString())
+          .order('start_time', { ascending: false }),
+      ])
+
       setProjects(mappedProjects)
 
-      // Fetch all rates for effective rate computation
-      const { data: ratesData } = await supabase.from('rates').select('*')
-      setAllRates((ratesData as Rate[]) || [])
-
       // Fetch running timers
-      const running = await getAllRunningTimersWithProjects()
       const timerMap = new Map<string, TimerDisplayInfo>()
       running.forEach((t: RunningTimerWithProject) => {
         timerMap.set(t.timeEntry.project_id, {
@@ -215,37 +244,20 @@ export default function Dashboard() {
 
       // Detect paused projects
       const pausedSet = new Set<string>()
-      await Promise.all(
-        mappedProjects
-          .filter((p) => !timerMap.has(p.id))
-          .map(async (p) => {
-            const paused = await getPausedTimerForProject(p.id)
-            if (paused) pausedSet.add(p.id)
-          })
-      )
+      // A project is considered paused if it has a stopped entry in the last 24 hours
+      // and does not currently have a running timer.
+      if (!pausedResult.error && pausedResult.data) {
+        pausedResult.data.forEach((entry: { project_id: string }) => {
+          if (!timerMap.has(entry.project_id)) pausedSet.add(entry.project_id)
+        })
+      }
       setPausedProjects(pausedSet)
 
-      // Fetch today's completed entries
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const { data: todayEntries, error: entriesError } = await supabase
-        .from('time_entries')
-        .select(`
-          id, start_time, end_time, duration_seconds, notes, project_id,
-          projects!inner(
-            id,
-            name,
-            trail_id,
-            trails!inner(id, name, color, is_billable)
-          )
-        `)
-        .eq('is_running', false)
-        .gte('start_time', todayStart.toISOString())
-        .order('start_time', { ascending: false })
+      setAllRates((ratesResult.data as Rate[]) || [])
 
-      if (!entriesError && todayEntries) {
+      if (!entriesResult.error && entriesResult.data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped: RecentEntry[] = todayEntries.map((e: any) => {
+        const mapped: RecentEntry[] = entriesResult.data.map((e: any) => {
           const trail = e.projects?.trails || { id: '', name: 'Unknown', color: '#3A7D44', is_billable: false }
           return {
             id: e.id,
@@ -339,15 +351,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="glass-card p-6 animate-pulse">
+          <div key={i} className="glass-card p-4 skeleton-card sm:p-6">
             <div className="mb-4 space-y-3">
-              <div className="h-3 w-20 rounded bg-surface-foreground/10 dark:bg-white/10" />
-              <div className="h-6 w-32 rounded bg-surface-foreground/10 dark:bg-white/10" />
+              <div className="skeleton h-3 w-20 rounded" />
+              <div className="skeleton h-6 w-32 rounded" />
             </div>
-            <div className="mb-4 h-4 w-16 rounded bg-surface-foreground/10 dark:bg-white/10" />
-            <div className="h-12 rounded-full bg-surface-foreground/10 dark:bg-white/10" />
+            <div className="skeleton mb-4 h-4 w-16 rounded" />
+            <div className="skeleton h-12 rounded-full" />
           </div>
         ))}
       </div>
@@ -369,9 +381,9 @@ export default function Dashboard() {
     return (
       <EmptyState title="No active projects">
         Add a trail and project from the{' '}
-        <a href="/trails" className="font-medium text-accent hover:text-accent-light">
+        <Link href="/trails" className="font-medium text-accent hover:text-accent-light">
           Trails
-        </a>{' '}
+        </Link>{' '}
         page to get started.
       </EmptyState>
     )
@@ -443,12 +455,12 @@ export default function Dashboard() {
           if (canQuickStart) handleStart(project.id)
           else if (isPaused && !isRunning && !isDisabled) handleResume(project.id)
         }}
-        className={`group relative overflow-hidden glass-card p-6 transition-all duration-300 hover:scale-[1.02] hover:bg-surface-foreground/5 dark:hover:bg-white/5 ${
+        className={`group relative overflow-hidden glass-card p-4 transition-all duration-300 hover:scale-[1.01] hover:bg-surface-foreground/5 sm:p-6 sm:hover:scale-[1.02] dark:hover:bg-white/5 ${
           isRunning ? 'ring-1 ring-accent shadow-[0_0_20px_rgba(132,204,22,0.15)] bg-accent/5' : ''
         } ${canQuickStart || (isPaused && !isRunning) ? 'cursor-pointer' : ''}`}
       >
         {/* Status indicator */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
           {isRunning ? (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent/10 border border-accent/20">
               <span className="relative flex h-2 w-2">
@@ -466,26 +478,26 @@ export default function Dashboard() {
         </div>
 
         {/* Trail + Project */}
-        <div className="mb-4 pr-16">
+        <div className="mb-4 pr-14 sm:pr-16">
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: group.trailColor }} />
             <p className="text-xs font-medium uppercase tracking-wider text-text-muted">{group.trailName}</p>
           </div>
-          <p className="text-xl font-bold text-text dark:text-white group-hover:text-accent transition-colors">
+          <p className="text-lg font-bold leading-tight text-text transition-colors group-hover:text-accent sm:text-xl dark:text-white">
             {project.name}
           </p>
         </div>
 
         {/* Timer & Cost */}
-        <div className="mb-6 flex items-end justify-between">
+        <div className="mb-5 flex items-end justify-between gap-3 sm:mb-6">
           <div>
             <p className="text-xs text-text-muted mb-1">Current Session</p>
-            <p className={`font-mono text-2xl font-bold ${isRunning ? 'text-accent' : 'text-text/60 dark:text-white/60'}`}>
+            <p className={`font-mono text-xl font-bold sm:text-2xl ${isRunning ? 'text-accent' : 'text-text/60 dark:text-white/60'}`}>
               {isRunning && timer ? formatDuration(timer.elapsedSeconds) : '00:00:00'}
             </p>
           </div>
           {effectiveRate !== null && (
-            <div className="text-right">
+            <div className="shrink-0 text-right">
               {currentCost !== null && isRunning ? (
                 <>
                   <p className="text-xs text-text-muted mb-1">Earned</p>
@@ -502,7 +514,7 @@ export default function Dashboard() {
         </div>
 
         {/* Controls */}
-        <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {isRunning ? (
             <>
               <button
@@ -555,15 +567,15 @@ export default function Dashboard() {
       <div key={group.trailId} className="space-y-4">
         <div className="flex items-center gap-3">
           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.trailColor }} />
-          <h3 className="text-base font-semibold text-text dark:text-white/90">{group.trailName}</h3>
+          <h3 className="min-w-0 flex-1 text-base font-semibold text-text dark:text-white/90">{group.trailName}</h3>
           {trailRate !== null && (
-            <span className="text-xs text-text-muted bg-surface-foreground/5 dark:bg-white/5 px-2 py-0.5 rounded-full">
+            <span className="shrink-0 rounded-full bg-surface-foreground/5 px-2 py-0.5 text-xs text-text-muted dark:bg-white/5">
               {formatCurrency(trailRate)}/hr
             </span>
           )}
-          <span className="ml-auto text-xs text-text-muted capitalize">{group.trailKind}</span>
+          <span className="hidden text-xs capitalize text-text-muted sm:block">{group.trailKind}</span>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {group.projects.map((project) => renderProjectCard(project, group))}
         </div>
       </div>
@@ -571,16 +583,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="content-enter space-y-7 sm:space-y-8">
       {/* Hero Section */}
-      <div className="flex flex-col items-center justify-center py-6">
-        <div className="transform scale-75 sm:scale-100 transition-transform duration-300">
-          <CircularProgress value={totalSeconds} max={28800} size={240}>
+      <div className="flex flex-col items-center justify-center pb-2 pt-1 sm:py-6">
+        <div className="scale-90 transform transition-transform duration-300 sm:scale-100">
+          <CircularProgress value={totalSeconds} max={28800} size={220}>
             <div className="flex flex-col items-center">
               <span className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-2">Today</span>
-              <div className="text-5xl font-bold tracking-tight text-text dark:text-white mb-1">
-                {hours}<span className="text-2xl text-text-muted mx-1">h</span>
-                {mins}<span className="text-2xl text-text-muted">m</span>
+              <div className="mb-1 text-4xl font-bold tracking-tight text-text sm:text-5xl dark:text-white">
+                {hours}<span className="mx-1 text-xl text-text-muted sm:text-2xl">h</span>
+                {mins}<span className="text-xl text-text-muted sm:text-2xl">m</span>
               </div>
               <div className="text-lg font-medium text-accent">
                 {formatCurrency(totalEarnings)}
@@ -589,21 +601,21 @@ export default function Dashboard() {
           </CircularProgress>
         </div>
 
-        <div className="mt-4 flex items-center gap-6 text-sm text-text-muted glass-panel px-6 py-3 rounded-full">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-wider mb-0.5">Entries</p>
+        <div className="glass-panel mt-2 grid w-full max-w-sm grid-cols-3 items-stretch overflow-hidden rounded-2xl px-0 py-0 text-sm text-text-muted sm:mt-4 sm:flex sm:w-auto sm:max-w-none sm:items-center sm:gap-6 sm:rounded-full sm:px-6 sm:py-3">
+          <div className="px-3 py-3 text-center sm:p-0">
+            <p className="mb-0.5 text-[11px] uppercase tracking-wider sm:text-xs">Entries</p>
             <p className="font-semibold text-text dark:text-white">{recentEntries.length}</p>
           </div>
-          <div className="w-px h-6 bg-border" />
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-wider mb-0.5">Billable</p>
+          <div className="hidden h-6 w-px bg-border sm:block" />
+          <div className="border-x border-border px-3 py-3 text-center sm:border-x-0 sm:p-0">
+            <p className="mb-0.5 text-[11px] uppercase tracking-wider sm:text-xs">Billable</p>
             <p className="font-semibold text-accent">{formatCurrency(totalEarnings)}</p>
           </div>
-          <div className="w-px h-6 bg-border" />
-          <div className="text-center">
+          <div className="hidden h-6 w-px bg-border sm:block" />
+          <div className="px-3 py-3 text-center sm:p-0">
             {runningCount > 0 ? (
               <>
-                <p className="text-xs uppercase tracking-wider mb-0.5">Active</p>
+                <p className="mb-0.5 text-[11px] uppercase tracking-wider sm:text-xs">Active</p>
                 <div className="flex items-center gap-1.5 justify-center">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
@@ -614,7 +626,7 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                <p className="text-xs uppercase tracking-wider mb-0.5">Status</p>
+                <p className="mb-0.5 text-[11px] uppercase tracking-wider sm:text-xs">Status</p>
                 <p className="font-semibold text-text dark:text-white">Ready</p>
               </>
             )}
@@ -624,7 +636,7 @@ export default function Dashboard() {
 
       {/* Billable Trails */}
       {billableGroups.length > 0 && (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           <h2 className="text-lg font-semibold text-text dark:text-white/90 pl-2 border-l-4 border-accent">
             Billable
           </h2>
@@ -637,7 +649,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           <button
             onClick={() => setShowNonBillable((v) => !v)}
-            className="flex items-center gap-2 pl-2 border-l-4 border-border text-sm font-medium text-text-muted hover:text-text dark:hover:text-white transition-colors"
+            className="flex min-h-11 items-center gap-2 border-l-4 border-border pl-2 text-sm font-medium text-text-muted transition-colors hover:text-text dark:hover:text-white"
           >
             <span>{showNonBillable ? 'Hide' : 'Show'} non-billable trails</span>
             <span className="text-xs">{showNonBillable ? '▲' : '▼'}</span>
@@ -653,12 +665,12 @@ export default function Dashboard() {
 
       {/* Recent Activity */}
       {recentEntries.length > 0 && (
-        <div className="mt-12">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="mt-10 sm:mt-12">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-text dark:text-white/90 pl-2 border-l-4 border-slate-500">
               Recent Activity
             </h2>
-            <span className="text-xs font-medium uppercase tracking-wider text-text-muted bg-surface-foreground/5 dark:bg-white/5 px-2 py-1 rounded">
+            <span className="shrink-0 rounded bg-surface-foreground/5 px-2 py-1 text-xs font-medium uppercase tracking-wider text-text-muted dark:bg-white/5">
               {recentEntries.length} {recentEntries.length === 1 ? 'entry' : 'entries'} today
             </span>
           </div>
@@ -682,7 +694,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={entry.id}
-                    className={`group flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 border-b border-border last:border-0 hover:bg-surface-foreground/5 dark:hover:bg-white/5 transition-colors ${
+                    className={`group flex flex-col gap-2 border-b border-border px-4 py-4 transition-colors last:border-0 hover:bg-surface-foreground/5 sm:grid sm:grid-cols-12 sm:gap-4 sm:px-6 dark:hover:bg-white/5 ${
                       index % 2 === 0 ? 'bg-transparent' : 'bg-surface-foreground/[0.02] dark:bg-white/[0.02]'
                     }`}
                   >
@@ -700,14 +712,14 @@ export default function Dashboard() {
                       <p className="text-sm text-text-muted truncate">{entry.trail_name}</p>
                     </div>
 
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-2 text-left sm:text-right">
                       <p className="font-mono text-sm font-medium text-text dark:text-white">
                         {formatDuration(entry.duration_seconds)}
                       </p>
                       <p className="text-xs text-text-muted sm:hidden md:block">{timeRange}</p>
                     </div>
 
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-2 text-left sm:text-right">
                       {cost !== null ? (
                         <p className="font-medium text-accent">{formatCurrency(cost)}</p>
                       ) : (

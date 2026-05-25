@@ -15,18 +15,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function normalizeCreatedAt(value: unknown): string {
   if (value === undefined || value === null || value === '') {
     return new Date().toISOString()
   }
 
   if (typeof value !== 'string') {
-    throw new Error('created_at must be an ISO-compatible string when provided')
+    throw new Error('created_at must be an ISO 8601 datetime string when provided')
+  }
+
+  if (!value.includes('T')) {
+    throw new Error('created_at must include a time component (ISO 8601 datetime)')
   }
 
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error('created_at must be a valid timestamp')
+    throw new Error('created_at must be a valid ISO 8601 datetime')
   }
 
   return parsed.toISOString()
@@ -35,6 +41,7 @@ function normalizeCreatedAt(value: unknown): string {
 function optionalUuid(value: unknown, field: string): string | null {
   if (value === undefined || value === null || value === '') return null
   if (typeof value !== 'string') throw new Error(`${field} must be a string UUID`)
+  if (!UUID_RE.test(value)) throw new Error(`${field} must be a valid UUID`)
   return value
 }
 
@@ -88,6 +95,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'observations must contain at least one item' }, { status: 400 })
   }
 
+  if (body.observations.length > 100) {
+    return NextResponse.json(
+      { error: 'observations may not exceed 100 items per request' },
+      { status: 400 }
+    )
+  }
+
   let rows: ObservationInsert[]
   try {
     rows = body.observations.map((item, index) => {
@@ -107,6 +121,7 @@ export async function POST(request: NextRequest) {
     .select('id, created_at')
 
   if (error) {
+    console.error('observations insert failed', error)
     return NextResponse.json({ error: 'Failed to persist observations' }, { status: 500 })
   }
 
