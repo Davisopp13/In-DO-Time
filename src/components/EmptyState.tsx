@@ -8,7 +8,7 @@ interface EmptyStateProps {
 export default function EmptyState({ title, children }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center glass-card py-16 px-6 text-center">
-      <div className="relative mb-6 h-16 w-24 opacity-80 dark:opacity-50 dark:invert filter">
+      <div className="relative mb-6 h-16 w-24 opacity-80 dark:opacity-50 filter">
         <Image
           src="/DO_CODE_LAB_LOGO.png"
           alt=""
