@@ -1,5 +1,6 @@
 'use client';
 
+import { Check, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 import type { Observation, Project, Trail } from '@/types/database';
@@ -23,6 +24,13 @@ export default function ObservationsPage() {
   const [observations, setObservations] = useState<ObservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedObservationId, setCopiedObservationId] = useState<string | null>(null);
+
+  async function copyObservation(observation: ObservationRow) {
+    await navigator.clipboard.writeText(observation.content);
+    setCopiedObservationId(observation.id);
+    window.setTimeout(() => setCopiedObservationId((current) => (current === observation.id ? null : current)), 1400);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -90,11 +98,22 @@ export default function ObservationsPage() {
         <div className="space-y-3">
           {observations.map((observation) => (
             <article key={observation.id} className="glass-card p-4 shadow-card">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                <span className="font-semibold uppercase tracking-wider text-primary">{observation.source}</span>
-                <span>{formatTimestamp(observation.created_at)}</span>
-                {observation.trailName && <span className="rounded-full bg-surface-foreground/10 px-2 py-0.5">{observation.trailName}</span>}
-                {observation.projectName && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">{observation.projectName}</span>}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                  <span className="font-semibold uppercase tracking-wider text-primary">{observation.source}</span>
+                  <span>{formatTimestamp(observation.created_at)}</span>
+                  {observation.trailName && <span className="rounded-full bg-surface-foreground/10 px-2 py-0.5">{observation.trailName}</span>}
+                  {observation.projectName && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">{observation.projectName}</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void copyObservation(observation)}
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface/60 text-text-muted transition hover:border-primary/40 hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring/40 dark:border-white/10 dark:bg-white/5"
+                  aria-label={copiedObservationId === observation.id ? 'Observation copied' : 'Copy observation'}
+                  title={copiedObservationId === observation.id ? 'Copied' : 'Copy observation'}
+                >
+                  {copiedObservationId === observation.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </button>
               </div>
               <p className="mt-2 text-sm leading-6 text-text dark:text-white">{observation.content}</p>
               {observation.metadata && Object.keys(observation.metadata as Record<string, unknown>).length > 0 && (
