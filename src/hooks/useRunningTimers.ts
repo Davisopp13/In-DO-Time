@@ -67,6 +67,7 @@ export function useRunningTimers() {
 
   return {
     timers,
+    activeTimer: timers[0] || null,
     loading,
     error,
     refresh: loadRunningTimers,

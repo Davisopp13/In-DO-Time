@@ -10,9 +10,9 @@ import { Z_INDEX } from '@/lib/constants';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
+  { href: '/briefing', label: 'Briefing' },
   { href: '/trails', label: 'Trails' },
   { href: '/journal', label: 'Journal' },
-  { href: '/briefing', label: 'Briefing' },
   { href: '/time-log', label: 'Time Log' },
   { href: '/reports', label: 'Reports' },
 ];

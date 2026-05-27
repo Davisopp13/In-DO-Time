@@ -2,6 +2,8 @@
 
 @plugin "tailwindcss-animate";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   /* Brand Colors - Reference CSS Variables */
   --color-primary: var(--primary);
@@ -42,7 +44,7 @@
   --accent-foreground: #0F172A;
 
   --text: #0F172A;
-  --text-muted: #64748B;
+  --text-muted: #475569;
 
   --border: #E2E8F0;
   --background: #F8FAFC;
@@ -50,8 +52,8 @@
 
   /* Background variables */
   --bg-image: url('/mountain-light-bg.jpg');
-  --bg-overlay-top: rgba(248, 250, 252, 0.4);
-  --bg-overlay-bottom: rgba(248, 250, 252, 0.9);
+  --bg-overlay-top: rgba(248, 250, 252, 0.72);
+  --bg-overlay-bottom: rgba(248, 250, 252, 0.94);
 
   /* Font variables are set by Next.js font loader */
 }
@@ -198,27 +200,47 @@
   }
 
   .glass-card {
-    @apply bg-surface/50 backdrop-blur-xl border border-border rounded-3xl transition-all duration-300;
+    @apply backdrop-blur-xl border border-border rounded-3xl transition-all duration-300;
+    background-color: color-mix(in srgb, var(--surface) 88%, transparent);
   }
 
   .dark .glass-card {
-    @apply bg-surface/20 border-border shadow-xl;
+    @apply border-border shadow-xl;
+    background-color: color-mix(in srgb, var(--surface) 20%, transparent);
   }
 
   .glass-panel {
-    @apply bg-surface/40 backdrop-blur-lg border border-border rounded-2xl;
+    @apply backdrop-blur-lg border border-border rounded-2xl;
+    background-color: color-mix(in srgb, var(--surface) 84%, transparent);
   }
 
   .dark .glass-panel {
-    @apply bg-surface/10 border-border;
+    @apply border-border;
+    background-color: color-mix(in srgb, var(--surface) 10%, transparent);
   }
 
   .glass-nav {
-    @apply bg-surface/80 backdrop-blur-xl border-b border-border;
+    @apply backdrop-blur-xl border-b border-border;
+    background-color: color-mix(in srgb, var(--surface) 92%, transparent);
   }
 
   .dark .glass-nav {
     @apply border-b border-white/10 shadow-lg;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Accessibility contrast overrides for text in light mode */
+  .text-accent {
+    color: #3f6212 !important;
+  }
+  .dark .text-accent {
+    color: var(--accent) !important;
+  }
+
+  .text-primary {
+    color: #166534 !important;
+  }
+  .dark .text-primary {
+    color: var(--primary) !important;
   }
 }

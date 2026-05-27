@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Header from "@/components/Header";
 import DemoBanner from "@/components/DemoBanner";
@@ -30,6 +31,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <Script id="init-time-aware-theme" strategy="beforeInteractive">
+        {`
+          (function () {
+            try {
+              var savedTheme = localStorage.getItem('theme');
+              if (savedTheme && savedTheme !== 'system') return;
+
+              var hour = new Date().getHours();
+              var isNight = hour >= 22 || hour < 6;
+              var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var shouldUseDark = isNight || prefersDark;
+              var html = document.documentElement;
+
+              html.classList.toggle('dark', shouldUseDark);
+              html.style.colorScheme = shouldUseDark ? 'dark' : 'light';
+            } catch (_) {}
+          })();
+        `}
+      </Script>
       <body className={`${playfair.variable} ${inter.variable} antialiased`}>
         <ThemeProvider
           attribute="class"

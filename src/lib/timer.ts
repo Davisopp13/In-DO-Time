@@ -31,6 +31,14 @@ export async function startTimer(projectId: string, notes?: string): Promise<Tim
     }
   }
 
+  // Enforce single active timer: stop any other running timers first
+  const runningTimers = await getRunningTimers()
+  for (const timer of runningTimers) {
+    if (timer.project_id !== projectId) {
+      await stopTimer(timer.id)
+    }
+  }
+
   const newEntry: TimeEntryInsert = {
     project_id: projectId,
     start_time: new Date().toISOString(),

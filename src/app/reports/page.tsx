@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { getSupabase } from '@/lib/supabase'
 import { formatDuration, calculateRunningCost, formatCurrency } from '@/lib/timer'
 import { generateCSV, downloadCSV, generateCSVFilename } from '@/lib/csv'
-import { Rate } from '@/types/database'
+import { Json, Rate } from '@/types/database'
 import EmptyState from '@/components/EmptyState'
 
 interface ReportEntry {
@@ -77,6 +77,8 @@ export default function ReportsPage() {
   const [allRates, setAllRates] = useState<Rate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [observationStatus, setObservationStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [observationError, setObservationError] = useState<string | null>(null)
 
   // Filter state
   const [trails, setTrails] = useState<{ id: string; name: string }[]>([])
@@ -252,6 +254,68 @@ export default function ReportsPage() {
     downloadCSV(csv, filename)
   }
 
+  const handleSendToObservations = async () => {
+    if (trailSummaries.length === 0 || observationStatus === 'saving') return
+
+    setObservationStatus('saving')
+    setObservationError(null)
+
+    try {
+      const supabase = getSupabase()
+      const trailName = selectedTrail ? trails.find(t => t.id === selectedTrail)?.name : undefined
+      const periodLabel = startDate || endDate
+        ? `${startDate || 'beginning'} to ${endDate || 'now'}`
+        : 'all completed time'
+      const topTrail = trailSummaries[0]
+      const billableLabel = grandTotalEarned > 0 ? ` and ${formatCurrency(grandTotalEarned)} earned` : ''
+      const content = `Report snapshot for ${trailName || 'all trails'} (${periodLabel}): ${formatDuration(grandTotalSeconds)} across ${grandTotalEntries} ${grandTotalEntries === 1 ? 'entry' : 'entries'}${billableLabel}. Top trail: ${topTrail.name} with ${formatDuration(topTrail.totalSeconds)}.`
+
+      const metadata = {
+        kind: 'report_snapshot',
+        filters: {
+          trail_id: selectedTrail || null,
+          trail_name: trailName || null,
+          start_date: startDate || null,
+          end_date: endDate || null,
+        },
+        totals: {
+          seconds: grandTotalSeconds,
+          formatted_duration: formatDuration(grandTotalSeconds),
+          earned: grandTotalEarned,
+          entry_count: grandTotalEntries,
+          trail_count: trailSummaries.length,
+        },
+        trails: trailSummaries.map((trail) => ({
+          id: trail.id,
+          name: trail.name,
+          seconds: trail.totalSeconds,
+          formatted_duration: formatDuration(trail.totalSeconds),
+          earned: trail.totalCost,
+          entry_count: trail.entryCount,
+          project_count: trail.projects.length,
+        })),
+      } satisfies Json
+
+      const { error: insertError } = await supabase
+        .from('observations')
+        .insert({
+          source: 'report',
+          content,
+          related_trail_id: selectedTrail || null,
+          related_project_id: null,
+          metadata,
+        })
+
+      if (insertError) throw insertError
+
+      setObservationStatus('saved')
+      window.setTimeout(() => setObservationStatus((current) => (current === 'saved' ? 'idle' : current)), 2200)
+    } catch (err) {
+      setObservationStatus('error')
+      setObservationError(err instanceof Error ? err.message : 'Could not save report observation')
+    }
+  }
+
   // Grand totals
   const grandTotalSeconds = trailSummaries.reduce((sum, t) => sum + t.totalSeconds, 0)
   const grandTotalEarned = trailSummaries.filter(t => t.is_billable).reduce((sum, t) => sum + t.totalCost, 0)
@@ -338,17 +402,32 @@ export default function ReportsPage() {
           </div>
         </div>
         {reportEntries.length > 0 && (
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors self-start"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-            Export CSV
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start">
+            <button
+              onClick={handleSendToObservations}
+              disabled={observationStatus === 'saving'}
+              className="flex items-center gap-2 rounded-full border border-border bg-surface/50 px-5 py-2 text-sm font-bold text-text shadow-card transition-colors hover:bg-surface-foreground/5 disabled:cursor-wait disabled:opacity-60 dark:text-white dark:hover:bg-white/5"
+            >
+              {observationStatus === 'saving' ? 'Saving...' : observationStatus === 'saved' ? 'Sent to Obs' : 'Send to Obs'}
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Export CSV
+            </button>
+          </div>
         )}
       </div>
+
+      {observationStatus === 'error' && observationError && (
+        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          Failed to send report to observations: {observationError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-6 glass-card border border-border p-4 shadow-card">

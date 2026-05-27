@@ -20,14 +20,50 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+}
+
 export default function ObservationsPage() {
   const [observations, setObservations] = useState<ObservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedObservationId, setCopiedObservationId] = useState<string | null>(null);
+  const [copyErrorObservationId, setCopyErrorObservationId] = useState<string | null>(null);
+  const [manualCopyObservationId, setManualCopyObservationId] = useState<string | null>(null);
 
   async function copyObservation(observation: ObservationRow) {
-    await navigator.clipboard.writeText(observation.content);
+    const copied = await copyToClipboard(observation.content);
+    if (!copied) {
+      setCopyErrorObservationId(observation.id);
+      setManualCopyObservationId(observation.id);
+      window.setTimeout(() => setCopyErrorObservationId((current) => (current === observation.id ? null : current)), 1800);
+      return;
+    }
+
+    setCopyErrorObservationId(null);
+    setManualCopyObservationId(null);
     setCopiedObservationId(observation.id);
     window.setTimeout(() => setCopiedObservationId((current) => (current === observation.id ? null : current)), 1400);
   }
@@ -98,24 +134,34 @@ export default function ObservationsPage() {
         <div className="space-y-3">
           {observations.map((observation) => (
             <article key={observation.id} className="glass-card p-4 shadow-card">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                  <span className="font-semibold uppercase tracking-wider text-primary">{observation.source}</span>
-                  <span>{formatTimestamp(observation.created_at)}</span>
-                  {observation.trailName && <span className="rounded-full bg-surface-foreground/10 px-2 py-0.5">{observation.trailName}</span>}
-                  {observation.projectName && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">{observation.projectName}</span>}
-                </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                <span className="font-semibold uppercase tracking-wider text-primary">{observation.source}</span>
+                <span>{formatTimestamp(observation.created_at)}</span>
+                {observation.trailName && <span className="rounded-full bg-surface-foreground/10 px-2 py-0.5">{observation.trailName}</span>}
+                {observation.projectName && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">{observation.projectName}</span>}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-text dark:text-white">
+                {observation.content}
                 <button
                   type="button"
                   onClick={() => void copyObservation(observation)}
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface/60 text-text-muted transition hover:border-primary/40 hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring/40 dark:border-white/10 dark:bg-white/5"
-                  aria-label={copiedObservationId === observation.id ? 'Observation copied' : 'Copy observation'}
-                  title={copiedObservationId === observation.id ? 'Copied' : 'Copy observation'}
+                  className="ml-1 inline-flex h-6 w-6 translate-y-1 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-foreground/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring/40 dark:hover:bg-white/10"
+                  aria-label={copyErrorObservationId === observation.id ? 'Copy failed' : copiedObservationId === observation.id ? 'Observation copied' : 'Copy observation'}
+                  title={copyErrorObservationId === observation.id ? 'Copy failed' : copiedObservationId === observation.id ? 'Copied' : 'Copy observation'}
                 >
-                  {copiedObservationId === observation.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedObservationId === observation.id ? <Check className="h-3.5 w-3.5" /> : <Copy className={copyErrorObservationId === observation.id ? 'h-3.5 w-3.5 text-red-500' : 'h-3.5 w-3.5'} />}
                 </button>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-text dark:text-white">{observation.content}</p>
+              </p>
+              {manualCopyObservationId === observation.id && (
+                <textarea
+                  readOnly
+                  autoFocus
+                  value={observation.content}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="mt-2 h-24 w-full resize-none rounded-lg border border-primary/30 bg-surface/80 p-2 text-xs text-text focus:outline-none focus:ring-2 focus:ring-ring/40 dark:bg-black/30 dark:text-white"
+                  aria-label="Observation text selected for manual copy"
+                />
+              )}
               {observation.metadata && Object.keys(observation.metadata as Record<string, unknown>).length > 0 && (
                 <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-surface/50 p-3 text-xs text-text-muted dark:border-white/5 dark:bg-black/20">
                   {JSON.stringify(observation.metadata, null, 2)}
