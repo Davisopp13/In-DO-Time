@@ -49,7 +49,9 @@ error message.
 
 ### 2. Credentials — `~/.config/in-do-time/observations.env`
 
-A shared dotenv file at this exact path (resolved via `os.homedir()`):
+A shared dotenv file resolved via `os.homedir()`.
+
+By default, the server uses the local profile:
 
 ```
 # ~/.config/in-do-time/observations.env
@@ -57,6 +59,23 @@ A shared dotenv file at this exact path (resolved via `os.homedir()`):
 OBSERVATIONS_TOKEN=replace-with-the-bearer-token-the-app-expects
 OBSERVATIONS_API_URL=http://localhost:3000/api/observations
 ```
+
+For production, create a profile-specific file:
+
+```
+# ~/.config/in-do-time/observations.prod.env
+
+OBSERVATIONS_TOKEN=replace-with-the-production-bearer-token
+OBSERVATIONS_API_URL=https://your-production-host/api/observations
+```
+
+Then set `OBSERVATIONS_PROFILE=prod` (or `OBSERVATIONS_ENV=prod`) in the MCP
+client config. Any profile other than `local` maps to
+`~/.config/in-do-time/observations.<profile>.env`.
+
+You can also provide `OBSERVATIONS_TOKEN` and `OBSERVATIONS_API_URL` directly
+in the MCP client environment. When both are set, they override file-based
+credentials.
 
 Format: one `KEY=VALUE` per line. Blank lines and `#` comments are ignored.
 Values may be wrapped in single or double quotes (they will be stripped).
@@ -102,7 +121,8 @@ For Claude Code (`~/.claude.json` or a project-scoped `.mcp.json`):
         "/absolute/path/to/In DO Time/mcp-servers/observations/dist/index.js"
       ],
       "env": {
-        "OBSERVATION_SOURCE": "claude-code"
+        "OBSERVATION_SOURCE": "claude-code",
+        "OBSERVATIONS_PROFILE": "prod"
       }
     }
   }
@@ -113,9 +133,9 @@ For Codex / Antigravity / any other MCP client, mirror the same shape — the
 `command`/`args`/`env` triple is the standard MCP server stanza. Change the
 `OBSERVATION_SOURCE` value per agent so observations are attributable.
 
-The `OBSERVATIONS_TOKEN` and `OBSERVATIONS_API_URL` are intentionally **not**
-in the MCP config — they live in the shared credentials file so multiple
-agents can reuse them and rotating the token only touches one place.
+The `OBSERVATIONS_TOKEN` and `OBSERVATIONS_API_URL` usually do not need to be
+in the MCP config — they can live in shared credentials files so multiple
+agents can reuse them and rotating a token only touches one place.
 
 ## Verifying the API token
 
@@ -142,6 +162,13 @@ If you get `401 Unauthorized` the token is wrong; if you get `503` the app
 isn't configured with `OBSERVATIONS_TOKEN`; if the connection fails the URL
 is unreachable from your machine.
 
+To verify production instead, read from the prod profile file:
+
+```bash
+TOKEN=$(grep '^OBSERVATIONS_TOKEN=' ~/.config/in-do-time/observations.prod.env | cut -d= -f2-)
+URL=$(grep '^OBSERVATIONS_API_URL='   ~/.config/in-do-time/observations.prod.env | cut -d= -f2-)
+```
+
 ## Manual MCP smoke test
 
 Once the server starts cleanly, the easiest end-to-end test is to wire it
@@ -163,6 +190,7 @@ Expected behavior:
 
 - Only one tool. No `list_trails`, `list_projects`, or name→UUID resolution
   — agents pass UUIDs they already have.
-- One credentials file path. No prod/dev split for now.
+- Profile-specific credentials are supported, but the server still exposes
+  only one `record_observation` tool per configured MCP server instance.
 - No tests in this package — manual verification is sufficient for the first
   cut.

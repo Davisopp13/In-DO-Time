@@ -12,11 +12,12 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const CONFIG_PATH = join(homedir(), '.config', 'in-do-time', 'observations.env')
+const CONFIG_DIR = join(homedir(), '.config', 'in-do-time')
+const DEFAULT_PROFILE = 'local'
 
 type ToolResult = { ok: true; id: string } | { ok: false; error: string }
 
-type Credentials = { token: string; apiUrl: string }
+type Credentials = { token: string; apiUrl: string; profile: string; configPath: string }
 
 function die(message: string): never {
   process.stderr.write(`[observations-mcp] ${message}\n`)
@@ -43,31 +44,51 @@ function parseEnvFile(contents: string): Record<string, string> {
   return out
 }
 
+function loadProfile(): string {
+  return (process.env.OBSERVATIONS_PROFILE || process.env.OBSERVATIONS_ENV || DEFAULT_PROFILE).trim() || DEFAULT_PROFILE
+}
+
+function configPathForProfile(profile: string): string {
+  return profile === DEFAULT_PROFILE
+    ? join(CONFIG_DIR, 'observations.env')
+    : join(CONFIG_DIR, `observations.${profile}.env`)
+}
+
 function loadCredentials(): Credentials {
+  const profile = loadProfile()
+  const configPath = configPathForProfile(profile)
+
+  const envToken = process.env.OBSERVATIONS_TOKEN?.trim()
+  const envApiUrl = process.env.OBSERVATIONS_API_URL?.trim()
+  if (envToken && envApiUrl) {
+    return { token: envToken, apiUrl: envApiUrl, profile, configPath: 'process.env' }
+  }
+
   let raw: string
   try {
-    raw = readFileSync(CONFIG_PATH, 'utf8')
+    raw = readFileSync(configPath, 'utf8')
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
     if (code === 'ENOENT') {
       die(
-        `Missing credentials file at ${CONFIG_PATH}.\n` +
+        `Missing credentials file at ${configPath}.\n` +
           `Create it with these keys:\n` +
           `  OBSERVATIONS_TOKEN=<bearer token>\n` +
-          `  OBSERVATIONS_API_URL=<https://host/api/observations>`,
+          `  OBSERVATIONS_API_URL=<https://host/api/observations>\n` +
+          `Select profiles with OBSERVATIONS_PROFILE=prod (or OBSERVATIONS_ENV=prod).`,
       )
     }
-    die(`Failed to read ${CONFIG_PATH}: ${(err as Error).message}`)
+    die(`Failed to read ${configPath}: ${(err as Error).message}`)
   }
 
   const parsed = parseEnvFile(raw)
-  const token = parsed.OBSERVATIONS_TOKEN
-  const apiUrl = parsed.OBSERVATIONS_API_URL
+  const token = envToken || parsed.OBSERVATIONS_TOKEN
+  const apiUrl = envApiUrl || parsed.OBSERVATIONS_API_URL
 
-  if (!token) die(`OBSERVATIONS_TOKEN missing in ${CONFIG_PATH}`)
-  if (!apiUrl) die(`OBSERVATIONS_API_URL missing in ${CONFIG_PATH}`)
+  if (!token) die(`OBSERVATIONS_TOKEN missing in ${configPath}`)
+  if (!apiUrl) die(`OBSERVATIONS_API_URL missing in ${configPath}`)
 
-  return { token, apiUrl }
+  return { token, apiUrl, profile, configPath }
 }
 
 function loadSource(): string {
@@ -272,7 +293,7 @@ async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
   process.stderr.write(
-    `[observations-mcp] ready (source="${source}", api=${creds.apiUrl})\n`,
+    `[observations-mcp] ready (source="${source}", profile="${creds.profile}", api=${creds.apiUrl})\n`,
   )
 }
 
