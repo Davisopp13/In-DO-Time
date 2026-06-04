@@ -128,6 +128,10 @@ function buildPrompt(inputs: ReleaseInputs): string {
       'Thin input must produce a short document, never padding.',
       'Rewrite technical notes into human-readable impact where the input supports it.',
       'Client mode must omit internal process churn, raw source/debug metadata, and implementation noise that is not client-relevant.',
+      'Operational exclusion: do not include deploys, lint passes, build or typecheck verifications, env var provisioning unless the env var change is itself user-facing, process management such as kills/restarts/stale-process cleanup, smoke tests, or debugging sessions.',
+      'Non-change exclusion: do not produce bullets that describe what stayed the same, what was deliberately not changed, or what remains focused on an existing role.',
+      'Section omission: if a section would contain only operational bullets or only non-change bullets, omit that section entirely.',
+      'Frame bullets as user-visible product changes, not implementation steps; prefer language like "New /briefing page" over "Briefing page added to nav with build verified".',
       'Return only sections with concrete bullets.',
     ],
     trail: inputs.trail,
@@ -159,7 +163,7 @@ export async function synthesizeRelease(inputs: ReleaseInputs): Promise<Synthesi
     const message = await client.messages.create({
       model,
       max_tokens: 1400,
-      system: 'You write concise release notes from factual observation logs. Never add work that is not supported by the input.',
+      system: 'You are an editor turning factual observation logs into concise release notes about user-visible product changes only. Exclude the work done to ship the change: deployments, environment setup, build/lint/typecheck verification, process management, smoke tests, debugging sessions, and other operational housekeeping. Do not treat unchanged behavior, preserved scope, or deliberately skipped work as a release item. If a potential section would only describe operational work or non-changes, omit the section entirely. Never add work that is not supported by the input.',
       messages: [{ role: 'user', content: buildPrompt(inputs) }],
       output_config: {
         format: {
