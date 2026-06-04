@@ -283,6 +283,58 @@ export interface Database {
         }
         Relationships: []
       }
+      release_documents: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          mode: 'internal' | 'client'
+          trail_id: string
+          start_date: string
+          end_date: string
+          title: string
+          markdown: string
+          structured_output: Json
+          source_observation_ids: string[]
+          status: 'draft' | 'fallback'
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          mode: 'internal' | 'client'
+          trail_id: string
+          start_date: string
+          end_date: string
+          title: string
+          markdown: string
+          structured_output?: Json
+          source_observation_ids?: string[]
+          status?: 'draft' | 'fallback'
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          mode?: 'internal' | 'client'
+          trail_id?: string
+          start_date?: string
+          end_date?: string
+          title?: string
+          markdown?: string
+          structured_output?: Json
+          source_observation_ids?: string[]
+          status?: 'draft' | 'fallback'
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'release_documents_trail_id_fkey'
+            columns: ['trail_id']
+            referencedRelation: 'trails'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       time_entries: {
         Row: {
           id: string
@@ -371,6 +423,10 @@ export type OpenLoopUpdate = Database['public']['Tables']['open_loops']['Update'
 export type JournalEntry = Database['public']['Tables']['journal_entries']['Row']
 export type JournalEntryInsert = Database['public']['Tables']['journal_entries']['Insert']
 export type JournalEntryUpdate = Database['public']['Tables']['journal_entries']['Update']
+
+export type ReleaseDocument = Database['public']['Tables']['release_documents']['Row']
+export type ReleaseDocumentInsert = Database['public']['Tables']['release_documents']['Insert']
+export type ReleaseDocumentUpdate = Database['public']['Tables']['release_documents']['Update']
 
 export type Rate = Database['public']['Tables']['rates']['Row']
 export type RateInsert = Database['public']['Tables']['rates']['Insert']

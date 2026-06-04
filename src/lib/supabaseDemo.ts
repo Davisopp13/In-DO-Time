@@ -244,6 +244,16 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             store.addOpenLoop(newItem as Tables['open_loops']['Row'])
           } else if (this.tableName === 'journal_entries') {
             store.addJournalEntry(newItem as Tables['journal_entries']['Row'])
+          } else if (this.tableName === 'release_documents') {
+            const document = {
+              structured_output: {},
+              source_observation_ids: [],
+              status: 'draft',
+              ...newItem,
+            } as Tables['release_documents']['Row']
+            store.addReleaseDocument(document)
+            inserted.push(document as T)
+            continue
           }
 
           inserted.push(newItem)
@@ -268,6 +278,8 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
         data = store.getOpenLoops() as T[]
       } else if (this.tableName === 'journal_entries') {
         data = store.getJournalEntries() as T[]
+      } else if (this.tableName === 'release_documents') {
+        data = store.getReleaseDocuments() as T[]
       }
 
       // Apply filters
@@ -294,6 +306,8 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             updatedItem = store.updateOpenLoop(id, this.updateValues as Partial<Tables['open_loops']['Row']>) as T | undefined
           } else if (this.tableName === 'journal_entries') {
             updatedItem = store.updateJournalEntry(id, this.updateValues as Partial<Tables['journal_entries']['Row']>) as T | undefined
+          } else if (this.tableName === 'release_documents') {
+            updatedItem = store.updateReleaseDocument(id, this.updateValues as Partial<Tables['release_documents']['Row']>) as T | undefined
           }
 
           if (updatedItem) updated.push(updatedItem)
@@ -319,6 +333,8 @@ class MockQueryBuilder<T extends Row<TableName>> implements QueryBuilder<T> {
             store.deleteOpenLoop(id)
           } else if (this.tableName === 'journal_entries') {
             store.deleteJournalEntry(id)
+          } else if (this.tableName === 'release_documents') {
+            store.deleteReleaseDocument(id)
           }
         }
         return { data: null, error: null }

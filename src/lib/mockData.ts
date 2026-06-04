@@ -12,6 +12,7 @@ type TimeEntry = Database['public']['Tables']['time_entries']['Row']
 type Observation = Database['public']['Tables']['observations']['Row']
 type OpenLoop = Database['public']['Tables']['open_loops']['Row']
 type JournalEntry = Database['public']['Tables']['journal_entries']['Row']
+type ReleaseDocument = Database['public']['Tables']['release_documents']['Row']
 
 // Generate consistent UUIDs for demo data
 const generateId = (seed: string): string => {
@@ -331,6 +332,8 @@ export const mockJournalEntries: JournalEntry[] = [
   },
 ]
 
+export const mockReleaseDocuments: ReleaseDocument[] = []
+
 // In-memory store for demo mode (allows CRUD operations to persist during session)
 export class MockDataStore {
   private trails: Map<string, Trail>
@@ -340,6 +343,7 @@ export class MockDataStore {
   private observations: Map<string, Observation>
   private openLoops: Map<string, OpenLoop>
   private journalEntries: Map<string, JournalEntry>
+  private releaseDocuments: Map<string, ReleaseDocument>
 
   constructor() {
     this.trails = new Map(mockTrails.map(t => [t.id, { ...t }]))
@@ -349,6 +353,7 @@ export class MockDataStore {
     this.observations = new Map(mockObservations.map(o => [o.id, { ...o }]))
     this.openLoops = new Map(mockOpenLoops.map(l => [l.id, { ...l }]))
     this.journalEntries = new Map(mockJournalEntries.map(j => [j.id, { ...j }]))
+    this.releaseDocuments = new Map(mockReleaseDocuments.map(d => [d.id, { ...d }]))
   }
 
   // Trails
@@ -519,6 +524,28 @@ export class MockDataStore {
 
   deleteJournalEntry(id: string): boolean {
     return this.journalEntries.delete(id)
+  }
+
+  // Release Documents
+  getReleaseDocuments(): ReleaseDocument[] {
+    return Array.from(this.releaseDocuments.values())
+  }
+
+  addReleaseDocument(document: ReleaseDocument): ReleaseDocument {
+    this.releaseDocuments.set(document.id, document)
+    return document
+  }
+
+  updateReleaseDocument(id: string, updates: Partial<ReleaseDocument>): ReleaseDocument | undefined {
+    const document = this.releaseDocuments.get(id)
+    if (!document) return undefined
+    const updated = { ...document, ...updates, updated_at: new Date().toISOString() }
+    this.releaseDocuments.set(id, updated)
+    return updated
+  }
+
+  deleteReleaseDocument(id: string): boolean {
+    return this.releaseDocuments.delete(id)
   }
 
   // Helper: Generate new ID

@@ -244,3 +244,71 @@
     color: var(--primary) !important;
   }
 }
+
+@media print {
+  @page {
+    margin: 0.5in;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body::before,
+  header,
+  .release-print-hide {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .release-print-scope,
+  .release-print-scope * {
+    visibility: visible !important;
+  }
+
+  .release-print-scope {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    border: 0 !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .release-print-document {
+    width: 100% !important;
+    max-width: none !important;
+    border: 1px solid #d7dfd0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .release-print-document header {
+    display: block !important;
+    background: #f3f7ef !important;
+    border-bottom: 1px solid #d7dfd0 !important;
+  }
+
+  .release-print-document h1,
+  .release-print-document h2,
+  .release-print-document h3,
+  .release-print-document p,
+  .release-print-document li,
+  .release-print-document div,
+  .release-print-document span {
+    color: #0f172a !important;
+  }
+
+  .release-print-document img {
+    display: block !important;
+  }
+}

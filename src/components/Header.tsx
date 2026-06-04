@@ -13,6 +13,7 @@ const navItems = [
   { href: '/briefing', label: 'Briefing' },
   { href: '/trails', label: 'Trails' },
   { href: '/journal', label: 'Journal' },
+  { href: '/release-documents', label: 'Releases' },
   { href: '/time-log', label: 'Time Log' },
   { href: '/reports', label: 'Reports' },
 ];
